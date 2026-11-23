@@ -1,0 +1,50 @@
+# Daily update: brings the data up to date with Metal Archives and republishes the site.
+#   1. downloads the data (the `data` release: see data.py)
+#   2. runs map/update.py (new/changed bands, new reviews, iTunes verification of bands new to the game, rebuild)
+#   3. uploads the data back to the release and commits map/update_state.json (a record of the last update; the
+#      commit also keeps the repo "active", since GitHub disables scheduled workflows after 60 days without activity)
+#   4. publishes the site (pages.yml)
+# Runs every day at 05:17 UTC, and by hand from the Actions tab ("Run workflow").
+name: Daily update
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    permissions:
+      contents: write             # upload the release assets and commit update_state.json
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the data
+        run: python3 data.py pull
+      - name: Update from Metal Archives
+        run: cd map && python3 update.py
+      - name: Save the data
+        run: python3 data.py push
+      - name: Record the update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add map/update_state.json
+          if git diff --cached --quiet; then echo "no new changes on Metal Archives"; exit 0; fi
+          git commit -m "Data update: changes up to $(python3 -c 'import json; print(json.load(open("map/update_state.json"))["since"])') (Metal Archives time)"
+          git pull --rebase && git push
+
+  publish:
+    needs: update
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml

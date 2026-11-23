@@ -4,7 +4,7 @@ An interactive map of the ~200,000 bands in [Encyclopaedia Metallum (Metal Archi
 
 **Live site:** https://miguelsr.js.org/metal-atlas/
 
-It is a static site: a single `index.html` plus precomputed JSON files. No server and no database. It is published automatically on **GitHub Pages** on every commit to `main`.
+It is a static site: a single `index.html` plus precomputed JSON files. No server and no database. It is published on **GitHub Pages**, and **a GitHub Actions job updates the data from Metal Archives every day** (see [Automatic daily update](#automatic-daily-update)).
 
 ---
 
@@ -77,7 +77,10 @@ The interface is in **English and Spanish**. It follows the browser's language a
 
 ~/metal-archives/
 ├── README.md
-├── .github/workflows/pages.yml  <- publishes the site on GitHub Pages on every push to main
+├── data.py                      <- moves the data between this machine and the `data` release (pull / push)
+├── .github/workflows/
+│   ├── daily.yml                  daily update from Metal Archives (scheduled)
+│   └── pages.yml                  publishes the site on GitHub Pages (on push, by hand, or after the daily update)
 ├── scraper/                     <- downloads from Metal Archives and iTunes
 │   ├── scrape.py                  full Metal Archives advanced search -> pages/
 │   ├── merge.py                   pages/ -> ~/metal_archives_bands.json
@@ -98,7 +101,7 @@ The interface is in **English and Spanish**. It follows the browser's language a
     ├── make_netlify.py            site/ -> netlify/, ready to publish
     ├── update.py                  incremental update (new/changed bands + new reviews)
     ├── ma_countries.json          Metal Archives country codes (for search links)
-    ├── update_state.json          date of the last update
+    ├── update_state.json          date of the last update (in git: the daily job commits it)
     ├── reviews_pages/             full review list (initial scrape)
     ├── reviews_new/               reviews added by update.py
     ├── reviews_by_band.json       review count and rating sum per band
@@ -118,7 +121,7 @@ The interface is in **English and Spanish**. It follows the browser's language a
 
 > **`site/` vs `netlify/`:** `site/index.html` has no `<html>`, `<head>` or `<body>`, because it was first written for claude.ai artifacts, which add them. `make_netlify.py` wraps it in a full HTML document and hard-links the JSON files (no extra disk space). **Edit `site/`. What gets published is the output of `make_netlify.py`**, which GitHub builds on every push. The name `netlify` is historical: the site used to be hosted on Netlify.
 
-Only the code, this README and `map/site/` are in the repository. Downloads and caches (~500 MB) stay local; see `.gitignore`.
+**Git holds the code** (plus `index.html`, the world map and `update_state.json`). **The data is not in git**: it is large and changes daily, so it lives as two files attached to a GitHub release tagged `data`, replaced on every update (see [Where the data lives](#where-the-data-lives)). `.gitignore` lists what stays out.
 
 ---
 
@@ -160,12 +163,15 @@ Everything is Python 3 standard library (no dependencies) plus `curl`. Paths are
 
 | Command | Purpose |
 |---|---|
-| `cd map && python3 update.py` | **Update everything** with Metal Archives' changes since last time and rebuild. |
+| (nothing) | The data updates itself every day on GitHub (see [Automatic daily update](#automatic-daily-update)). |
+| `python3 data.py pull` | Download the current data from the `data` release (do this before working locally). |
+| `python3 data.py push` | Upload the local data to the release (only after updating it locally). |
+| `cd map && python3 update.py` | Update the data **locally** with Metal Archives' changes since last time and rebuild. |
 | `cd map && python3 update.py --dry-run` | See how many bands and reviews changed, without touching anything. |
 | `cd map && python3 update.py --since 2026-11-01` | Update from a given date. |
 | `cd map && python3 game.py && python3 make_netlify.py` | Rebuild the game data and the publish folder (e.g. after verifying more bands). |
 | `cd map && python3 make_netlify.py` | Rebuild only `netlify/` (e.g. after editing `site/index.html`). |
-| `git add -A && git commit -m "…" && git push` | Publish (see [Publishing](#publishing-a-new-version)). |
+| `git pull` then `git add -A && git commit -m "…" && git push` | Publish code changes (see [Publishing](#publishing-a-new-version)). |
 | `cd scraper && nohup caffeinate -ims bash night.sh > night.log 2>&1 &` | Run the iTunes verification in the background without letting the Mac sleep. |
 
 ### Full reference
@@ -184,6 +190,7 @@ Everything is Python 3 standard library (no dependencies) plus `curl`. Paths are
 | `map/game.py [--mixed]` | | Default: **verified bands only**. `--mixed`: unverified bands too, with live iTunes search. |
 | `map/make_netlify.py` | | |
 | `map/update.py [--dry-run] [--since YYYY-MM-DD]` | | See [Updating the data](#updating-the-data). |
+| `data.py pull [--site] \| push \| pack` | `--site`: only the site data | See [Where the data lives](#where-the-data-lives). Needs `gh` logged in. |
 
 **`geo_dl/`** holds `admin1.geojson` (Natural Earth 10m, first-level administrative divisions), `cities1000.txt` and `admin1Codes.txt` (GeoNames). They are already downloaded.
 
@@ -191,26 +198,70 @@ Everything is Python 3 standard library (no dependencies) plus `curl`. Paths are
 
 ## Common tasks
 
+### Automatic daily update
+
+`.github/workflows/daily.yml` runs **every day at 05:17 UTC** on GitHub's servers (free for public repositories):
+
+1. `python3 data.py pull`: downloads the data from the `data` release.
+2. `cd map && python3 update.py`: new and changed bands, new reviews, iTunes verification of bands new to the game, and the rebuild (see [Updating the data](#updating-the-data)).
+3. `python3 data.py push`: uploads the updated data back to the release.
+4. Commits `map/update_state.json` with a message like *"Data update: changes up to 2026-11-24 05:52"*, so the repo history shows every update.
+5. Publishes the site (it calls `pages.yml`).
+
+A typical day takes 20–40 minutes (about 1,000 changed bands at ~1.3 s each). If nothing changed, it stops after step 2.
+
+- **Run it by hand:** the repo's **Actions** tab → *Daily update* → *Run workflow*, or `gh workflow run daily.yml`.
+- **Follow it:** `gh run list --workflow daily.yml`, or `gh run watch`.
+- **Failures:** GitHub e-mails the repo owner when a scheduled run fails. A run that fails uploads nothing, so the next one simply starts again from the last good state.
+- **Change the time:** the `cron` line in `daily.yml` (UTC).
+- **Pause it:** Actions tab → *Daily update* → *Disable workflow*.
+- GitHub disables scheduled workflows in public repos after **60 days without activity**. The daily commit of `update_state.json` counts as activity, so this should only happen if Metal Archives goes 60 days without a single change. If it happens, re-enable it from the Actions tab.
+
+### Where the data lives
+
+The data is attached to the release tagged [`data`](https://github.com/MiguelSR/metal-atlas/releases/tag/data) as two files, replaced on every update (no history piles up):
+
+| File | Contents | Size |
+|---|---|---|
+| `state.tar.gz` | what the scripts need to update: the master dataset (unpacked to `~/metal_archives_bands.json`), review lists and counts, geography downloads, and the scraper caches (lineups, discographies, iTunes verification) | ~53 MB |
+| `site-data.tar.gz` | the site's generated JSON (`map/site/*.json`, `c/`, `r/`), which `pages.yml` deploys | ~17 MB |
+
+`data.py` moves them:
+
+```bash
+python3 data.py pull          # download both and unpack them over the local files
+python3 data.py pull --site   # only the site data (enough to preview the site locally)
+python3 data.py push          # pack the local files and upload them
+```
+
+**The published master dataset leaves out band notes and contact e-mails** (the site uses neither; only whether a band has notes is kept, which the relevance score needs). A full local copy from 2026-11-23 is kept at `~/metal_archives_bands.full-2026-11-23.json`.
+
+**GitHub is the source of truth for the data.** The daily job always starts from the release, so local data goes stale. To work locally: `python3 data.py pull` first; if you update the data locally, `python3 data.py push` afterwards, and don't do it while the daily job is running.
+
 ### Publishing a new version
 
-Commit and push the changes in `map/site/` (and the code):
+Changes to the code or to `index.html`: commit and push. The daily job also commits, so pull first:
 
 ```bash
 cd ~/metal-archives
-git add -A && git commit -m "Update data" && git push
+git pull
+git add -A && git commit -m "…" && git push
 ```
 
-GitHub Actions runs `map/make_netlify.py` and publishes the result at https://miguelsr.js.org/metal-atlas/ in about a minute. Progress and errors: the repo's **Actions** tab, or `gh run list`.
-
-**The caches only exist on the local machine.** The iTunes verification (`scraper/itunes/`) took about 20 hours, so keep a backup of `~/metal-archives` and `~/metal_archives_bands.json`.
+`pages.yml` downloads the site data from the release, runs `map/make_netlify.py` and publishes the result at https://miguelsr.js.org/metal-atlas/ in about a minute. Progress and errors: the repo's **Actions** tab, or `gh run list`.
 
 ### Updating the data
 
+The daily job does this on its own. To do it locally (for example to test a change to the scripts):
+
 ```bash
-cd ~/metal-archives/map
+cd ~/metal-archives
+python3 data.py pull            # start from the latest data
+cd map
 python3 update.py --dry-run     # optional: see how much changed
 nohup caffeinate -ims python3 update.py > update.log 2>&1 &
 tail -f update.log              # follow progress; it ends with "done…"
+cd .. && python3 data.py push   # share the result (the site updates on the next push or daily run)
 ```
 
 What `update.py` does:
@@ -234,9 +285,10 @@ What `update.py` does:
 
 Time: a little over 1 s per changed band (request + 0.8 s courtesy pause), plus a few minutes of rebuilding. In November 2026 about 1,000 bands changed per day; the first run (~2,000 bands) took about 45 minutes. Running it often keeps each pass short.
 
-After updating, publish with `git add -A && git commit && git push`.
 
 ### Verifying more game bands on iTunes
+
+The daily job already verifies bands that enter the top 6,000. To verify many at once (e.g. after raising the 6,000 limit), run it locally and push the data:
 
 ```bash
 cd ~/metal-archives/scraper
@@ -245,11 +297,11 @@ tail night.log        # a "levels: […]" line every 30 min
 tail verify.log       # iTunes block warnings (403)
 ```
 
-It can run alongside `update.py`: they talk to different servers.
+It can run alongside `update.py`: they talk to different servers. When it finishes, `cd .. && python3 data.py push`.
 
 ### Changing texts, colors or behavior
 
-Everything is in `map/site/index.html`. Run `python3 map/make_netlify.py` afterwards to check locally, then push.
+Everything is in `map/site/index.html`. To preview locally: `python3 data.py pull --site` (once), `python3 map/make_netlify.py`, and serve `map/netlify` (e.g. `python3 -m http.server -d map/netlify`). Then commit and push.
 
 - **Texts:** the `TX` dictionary (keys `en` and `es`) near the top of the script, used through `t("key", …)`.
 - **Game levels:** `LEVELS` in `game.py`; their names in `TX.*.levels`.
@@ -372,6 +424,7 @@ They come from the **iTunes Search API**: free, no key, and callable from the br
   - new aliases of bands that already existed (it only fetches them for new bands);
   - deleted reviews (it only adds new ones).
 - **Metal Archives dates** use the Metal Archives server's time zone, which is why each update goes back one extra day.
+- **The daily job depends on Metal Archives accepting requests from GitHub's servers.** It does today (checked on 2026-11-23), but Metal Archives sits behind Cloudflare, which could start challenging data-center IPs. The job would then fail (with an e-mail); the fallback is to update locally (`data.py pull`, `update.py`, `data.py push`).
 - **Be polite:** every script that queries Metal Archives waits ~0.8 s between requests and retries with growing waits. Do not lower those delays.
 
 ---

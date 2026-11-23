@@ -1,7 +1,7 @@
-import json, re, math, sys
+import json, re, math, os, sys
 from collections import Counter, defaultdict
 
-SRC = "/Users/miguel/metal_archives_bands.json"
+SRC = os.path.expanduser("~/metal_archives_bands.json")
 OUT = sys.argv[1] if len(sys.argv) > 1 else None
 bands = json.load(open(SRC))
 

@@ -1,8 +1,15 @@
-# What goes in the repo: the code, the README and the published site (map/site).
-# Everything below is either generated or a large local cache/download, rebuilt by the scripts.
+# What goes in the repo: the code and the README. The data lives in the `data` release (see data.py);
+# everything below is generated, or a large local cache/download handled by data.py and the scripts.
 
 # generated publish folder (GitHub Actions builds it on every push)
 map/netlify/
+
+# the site's generated data and the packed data snapshots: they live in the `data` release (see data.py)
+map/site/*.json
+!map/site/countries-50m.json
+map/site/c/
+map/site/r/
+dist/
 
 # raw downloads and intermediate data (hundreds of MB, thousands of files)
 scraper/pages/
@@ -14,7 +21,6 @@ map/reviews_new/
 map/geo_dl/
 map/regions_out/
 map/reviews_by_band.json
-map/update_state.json
 
 # logs, backups, system files
 *.log

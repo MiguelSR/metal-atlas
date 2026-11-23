@@ -1,13 +1,14 @@
-# Publishes the site on GitHub Pages on every push to main.
-# It runs the same build as locally (map/make_netlify.py: site/ -> a static folder with a full HTML document)
-# and deploys that folder. Build and deploy are separate jobs (GitHub's recommended layout): the deploy job only
-# starts once the uploaded artifact is registered.
+# Publishes the site on GitHub Pages: on every push to main, by hand, or called by the daily update (daily.yml).
+# The page (map/site/index.html) comes from git; its data files come from the `data` release (see data.py).
+# make_netlify.py turns map/site into a static folder with a full HTML document. Build and deploy are separate
+# jobs (GitHub's recommended layout): the deploy job only starts once the uploaded artifact is registered.
 name: Publish site
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -23,6 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main                 # when called right after the daily update, include its commit
+      - name: Get the site data (data release)
+        run: python3 data.py pull --site
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Build
         run: python3 map/make_netlify.py
       - uses: actions/configure-pages@v5

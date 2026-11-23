@@ -1,1 +1,0 @@
-{"regions":["Gibraltar"],"fills":{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"r":0},"geometry":{"type":"MultiPolygon","coordinates":[[[[-5.36,36.14],[-5.34,36.14],[-5.34,36.13],[-5.34,36.12],[-5.34,36.11],[-5.35,36.12],[-5.36,36.14]]]]}}]},"borders":{"type":"MultiLineString","coordinates":[]},"cubes":[{"y":{},"g":{}}],"unassigned":10}
