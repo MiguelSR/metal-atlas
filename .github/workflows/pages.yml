@@ -1,0 +1,35 @@
+# Publishes the site on GitHub Pages on every push to main.
+# It runs the same build as locally (map/make_netlify.py: site/ -> a static folder with a full HTML document)
+# and deploys that folder.
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: python3 map/make_netlify.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: map/netlify
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,24 @@
+# What goes in the repo: the code, the README and the published site (map/site).
+# Everything below is either generated or a large local cache/download, rebuilt by the scripts.
+
+# generated publish folder (GitHub Actions builds it on every push)
+map/netlify/
+
+# raw downloads and intermediate data (hundreds of MB, thousands of files)
+scraper/pages/
+scraper/members/
+scraper/itunes/
+scraper/disco/
+map/reviews_pages/
+map/reviews_new/
+map/geo_dl/
+map/regions_out/
+map/reviews_by_band.json
+map/update_state.json
+
+# logs, backups, system files
+*.log
+*.bak
+*.tmp
+.DS_Store
+__pycache__/
