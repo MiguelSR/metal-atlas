@@ -129,6 +129,8 @@ svg#map:active { cursor: grabbing; }
 .pop-h { padding: 14px 16px 10px; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; }
 .pop-h h2 { font-family: var(--display); font-weight: 400; font-size: 28px; line-height: 1.05; margin: 0; text-wrap: balance; min-width: 0; }
 .pop-h .meta { grid-column: 1 / -1; color: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+.pop-h .meta a.ma { color: inherit; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 2px; }
+.pop-h .meta a.ma:hover { color: var(--gold); text-decoration-color: currentColor; }
 .close, .back { background: none; border: 0; color: var(--muted); cursor: pointer; font: inherit; padding: 2px 4px; }
 .close { font-size: 20px; line-height: 1; align-self: start; }
 .close:hover, .back:hover { color: var(--ink); }
@@ -380,7 +382,7 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
       status: ["", "Active", "On hold", "Split-up", "Unknown status", "Changed name", "Disputed"],
       plNone: "No preview found", plPause: "Pause", plPlay: "Play a 30 s preview",
       npClose: "Close player", npNext: "Next track", npStop: "Stop and close", npPlay: "Play", npPause: "Pause",
-      npBlocked: "Playback was blocked by the browser", npUnavail: "Previews unavailable here (network blocked)", npVia: "preview via Apple Music",
+      npBlocked: "Playback was blocked by the browser", npUnavail: "Previews unavailable here (network blocked)", npVia: "preview via Apple Music", maSearch: "See these bands on Metal Archives (same filters)",
       otherGenre: "Other genre",
       yrRange: (a, b) => `formed ${a}–${b}`, yrFrom: a => `formed ${a} or later`, yrTo: b => `formed ${b} or earlier`,
       nameContains: q => `name contains “${q}”`, matching: q => `matching “${q}”`, allEras: "all eras",
@@ -438,7 +440,7 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
       status: ["", "Activa", "En pausa", "Separada", "Estado desconocido", "Cambió de nombre", "En disputa"],
       plNone: "Sin fragmento disponible", plPause: "Pausa", plPlay: "Escuchar 30 s",
       npClose: "Cerrar reproductor", npNext: "Siguiente canción", npStop: "Parar y cerrar", npPlay: "Reproducir", npPause: "Pausa",
-      npBlocked: "El navegador ha bloqueado la reproducción", npUnavail: "Fragmentos no disponibles aquí (red bloqueada)", npVia: "fragmento vía Apple Music",
+      npBlocked: "El navegador ha bloqueado la reproducción", npUnavail: "Fragmentos no disponibles aquí (red bloqueada)", npVia: "fragmento vía Apple Music", maSearch: "Ver estas bandas en Metal Archives (con los mismos filtros)",
       otherGenre: "Otro género",
       yrRange: (a, b) => `formadas ${a}–${b}`, yrFrom: a => `formadas en ${a} o después`, yrTo: b => `formadas en ${b} o antes`,
       nameContains: q => `nombre contiene “${q}”`, matching: q => `que contienen “${q}”`, allEras: "todas las épocas",
@@ -792,6 +794,28 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
   let focus = null; // genre highlighted from the legend
 
   const yearsText = () => lo == null && hi == null ? "" : lo != null && hi != null ? t("yrRange", lo, hi) : lo != null ? t("yrFrom", lo) : t("yrTo", hi);
+  // link to Metal Archives' advanced search with the same filters (country, region, genre, years, name, active)
+  const REGION_EN = {   // grouped regions with local names -> the English names Metal Archives uses in "Location"
+    "Cataluña": "Catalonia", "Andalucía": "Andalusia", "País Vasco": "Basque Country", "Foral de Navarra": "Navarre", "Aragón": "Aragon",
+    "Castilla y León": "Castile and León", "Castilla-La Mancha": "Castile-La Mancha", "Valenciana": "Valencia", "Canary Is.": "Canary Islands",
+    "Islas Baleares": "Balearic Islands", "Piemonte": "Piedmont", "Lombardia": "Lombardy", "Trentino-Alto Adige": "Trentino", "Toscana": "Tuscany",
+    "Sardegna": "Sardinia", "Valle d'Aosta": "Aosta", "Friuli-Venezia Giulia": "Friuli", "Bretagne": "Brittany", "Normandie": "Normandy",
+    "Corse": "Corsica", "Guyane française": "French Guiana" };
+  const NO_REGION_SEARCH = new Set(["United Kingdom", "Slovenia"]);   // statistical regions that never appear in band locations
+  function maSearch(c, ri, gi = null, active = false) {
+    let loc = "";
+    if (ri != null) {
+      if (NO_REGION_SEARCH.has(c)) return null;
+      const r = RG[c].regions[ri];
+      loc = (REGION_EN[r] || r).replace(/\s*\(.*?\)\s*/g, " ").trim();
+    }
+    if (!C[c] || !C[c].cc) return null;
+    const p = new URLSearchParams({ bandName: query ? bq.value.trim() : "", genre: gi != null ? GEN[gi] : "", "country[]": C[c].cc,
+      location: loc, yearCreationFrom: lo ?? "", yearCreationTo: hi ?? "" });
+    if (active) p.append("status[]", "1");
+    return "https://www.metal-archives.com/search/advanced/searching/bands?" + p;
+  }
+  const maLink = (url, text) => url ? `<a class="ma" href="${esc(url)}" target="_blank" rel="noopener" title="${esc(t("maSearch"))}">${text}</a>` : text;
   const selectionText = () => [yearsText(), query ? t("nameContains", bq.value.trim()) : ""].filter(Boolean).join(" · ") || t("allEras");
   function paintSub() {
     let tot = 0; for (const c of IDX.countries) if (c.name !== "International" && c.name !== "Unknown") tot += stats[c.name].n;
@@ -893,7 +917,7 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
     const isR = ri != null, key = c + "|" + ri;
     pop.innerHTML = `
       <div class="pop-h">${isR ? `<button class="back" data-up>← ${esc(cn(c))}</button>` : ""}<h2>${esc(unitName(c, ri))}</h2><button class="close" aria-label="${t("close")}">×</button>
-        <div class="meta">${isR ? esc(cn(c)) + " · " : ""}${t("bands", s.n)} · ${t("active", s.active)} · ${esc(selectionText())}</div></div>
+        <div class="meta">${isR ? esc(cn(c)) + " · " : ""}${maLink(maSearch(c, ri), t("bands", s.n))} · ${maLink(maSearch(c, ri, null, true), t("active", s.active))} · ${esc(selectionText())}</div></div>
       ${s.n && all.length > 10 ? `<div class="gs"><input type="search" id="gsq" autocomplete="off" placeholder="${esc(t("genreSearchPh", nf(all.length)))}" aria-label="${esc(t("genreSearchAl"))}" value="${esc(GQ[key] || "")}"></div>` : ""}
       <div class="pop-b" id="glist"></div>
       <div class="foot">${t("footOverlap")}${filterNote()}${isR && RG[c].unassigned ? t("unassigned", RG[c].unassigned, esc(cn(c))) : ""}</div>`;
@@ -928,7 +952,7 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
     const name = GEN[gi], us = unitStats(c, ri), n = ((us.all || us.genres).find(x => x[0] === gi) || [0, 0])[1];   // all genres, not just the top 10
     const where = ri == null ? cn(c) : `${RG[c].regions[ri]}, ${cn(c)}`;
     const head = `<div class="pop-h"><button class="back">← ${esc(unitName(c, ri))}</button><h2>${esc(name)}</h2><button class="close" aria-label="${t("close")}">×</button>
-        <div class="meta">${esc(where)} · ${t("bands", n)} · ${esc(selectionText())}</div></div>`;
+        <div class="meta">${esc(where)} · ${maLink(maSearch(c, ri, gi), t("bands", n))} · ${esc(selectionText())}</div></div>`;
     const wire = () => { pop.querySelector(".back").onclick = () => showUnit(c, ri); pop.querySelector(".close").onclick = close; };
     pop.innerHTML = head + `<div class="pop-b"><div class="empty">${t("loadingList")}</div></div>`; wire(); place();
     const f = await loadCountry(c);

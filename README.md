@@ -1,129 +1,133 @@
 # Metal Atlas
 
-Mapa interactivo de las ~200.000 bandas de [Encyclopaedia Metallum (Metal Archives)](https://www.metal-archives.com), con un modo juego para adivinar bandas por su música.
+An interactive map of the ~200,000 bands in [Encyclopaedia Metallum (Metal Archives)](https://www.metal-archives.com), with a game mode where you guess bands from their music.
 
-Es una web estática: un único `index.html` más ficheros JSON precalculados. No necesita servidor ni base de datos; se publica sola en **GitHub Pages** con cada commit a `main` (https://miguelsr.js.org/metal-atlas/).
+**Live site:** https://miguelsr.js.org/metal-atlas/
 
----
-
-## Índice
-
-1. [Qué hace la web](#qué-hace-la-web)
-2. [Estructura del proyecto](#estructura-del-proyecto)
-3. [Cómo se generan los datos (pipeline)](#cómo-se-generan-los-datos-pipeline)
-4. [Comandos](#comandos)
-5. [Tareas habituales](#tareas-habituales)
-6. [Formato de los datos](#formato-de-los-datos)
-7. [Cómo funciona por dentro](#cómo-funciona-por-dentro)
-8. [Límites y problemas conocidos](#límites-y-problemas-conocidos)
+It is a static site: a single `index.html` plus precomputed JSON files. No server and no database. It is published automatically on **GitHub Pages** on every commit to `main`.
 
 ---
 
-## Qué hace la web
+## Contents
 
-La página tiene **dos modos**, que se alternan con el botón pequeño junto al título (**Game** / **← Map**). El modo mapa es el de por defecto.
+1. [What the site does](#what-the-site-does)
+2. [Project layout](#project-layout)
+3. [How the data is built (pipeline)](#how-the-data-is-built-pipeline)
+4. [Commands](#commands)
+5. [Common tasks](#common-tasks)
+6. [Data formats](#data-formats)
+7. [How it works](#how-it-works)
+8. [Limits and known issues](#limits-and-known-issues)
 
-### Modo mapa
+---
 
-- **Mapa del mundo coloreado por género principal**: cada país toma el color del género con más bandas. La leyenda muestra los géneros y cuántos países lidera cada uno.
-- **Filtro por año de formación** (desde / hasta, con rangos rápidos). Con un filtro activo, las bandas sin año conocido quedan fuera.
-- **Vista por regiones**: al hacer clic en un país o acercar el zoom, el mapa se divide en regiones (estados, provincias, comunidades…). Las bandas cuya ubicación no se pudo situar solo aparecen en la ficha del país.
-- **Ficha de país o región** (al hacer clic):
-  - nº de bandas y activas;
-  - top 10 de géneros;
-  - **buscador predictivo de géneros**, para encontrar cualquier subgénero aunque no esté en el top 10. Los resultados salen ordenados por nº de bandas.
-- **Listado de bandas de un género**, ordenado por relevancia (ver [Relevancia](#relevancia)), con año, estado, reseñas y enlace a Metal Archives.
-- **Buscador de bandas por nombre** (arriba): busca en las 200.000 bandas.
-- **Reproductor discreto**: el icono ▶ junto a cada banda reproduce un fragmento de 30 s de Apple Music en la propia página. No suena nada hasta que se pulsa.
-- **Buscador de países** y controles de zoom.
+## What the site does
 
-### Modo juego («Name that band»)
+The page has **two modes**, switched with the small button next to the title (**Game** / **← Map**). Map mode is the default.
 
-- **10 rondas.** Cada una empieza con un fragmento de 30 s de una canción y hay que escribir el nombre de la banda (con sugerencias mientras escribes).
-- **Puntos:** acertar sin pistas vale 7 puntos. Cada pista extra cuesta uno, y un fallo destapa automáticamente la siguiente. Las pistas, en orden:
-  1. País
-  2. Año de formación
-  3. Fragmento de una reseña (sin el nombre de la banda ni del disco)
-  4. Formación (miembros)
-  5. Título de un disco
-  6. Foto de la banda
-- **Si una banda no tiene alguna pista** (p. ej. no hay foto), esa pista se salta gratis.
-- **La respuesta es tolerante:** ignora mayúsculas, acentos, signos y pequeñas erratas.
-- **Al resolver la ronda** aparecen el logo, la foto de la banda y la portada del disco que sonaba.
-- **5 niveles de dificultad**, según el puesto de la banda en el ranking de relevancia:
+### Map mode
 
-  | Nivel | Bandas (puesto) |
+- **World map colored by leading genre**: each country takes the color of the genre with the most bands. The legend lists the genres and how many countries each one leads.
+- **Formation-year filter** (from / to, with quick ranges). With a year filter on, bands without a known formation year are left out.
+- **Region view**: clicking a country or zooming in splits the map into regions (states, provinces…). Bands whose location could not be placed only appear in the country card.
+- **Country or region card** (on click):
+  - number of bands and active bands. Both numbers link to **Metal Archives' advanced search with the same filters** (country, region, genre, years, band name, active);
+  - top 10 genres;
+  - **predictive genre search**, to find any subgenre even outside the top 10. Results are sorted by band count.
+- **Bands of one genre**, sorted by relevance (see [Relevance](#relevance)), with year, status, reviews and a link to each band on Metal Archives.
+- **Band search by name** (top bar), across all 200,000 bands.
+- **Unobtrusive player**: the ▶ icon next to each band plays a 30-second Apple Music preview on the page itself. Nothing plays until you press it.
+- **Country finder** and zoom controls.
+
+### Game mode ("Name that band")
+
+- **10 rounds.** Each one starts with a 30-second clip of a song; type the band's name (suggestions appear as you type).
+- **Points:** a correct guess with no clues is worth 7 points. Each clue you reveal costs one, and a wrong guess reveals the next clue automatically. The clues:
+  - Origin (city/area and country)
+  - Year formed
+  - A passage from a review (with the band and album names hidden)
+  - Lineup
+  - An album title
+  - A band photo
+- **Clues come in random order**, one at a time: the current one gets a large spotlight card ("Clue 3 of 6"), the earlier ones move to a compact list below. Only the clues a band actually has are used.
+- **Forgiving answers:** case, accents, punctuation and small typos are ignored.
+- **When the round ends** you see the logo, the band photo, the cover of the album that was playing, and every clue.
+- **5 difficulty levels**, by the band's position in the relevance ranking:
+
+  | Level | Bands (rank) |
   |---|---|
-  | 1 · Clásicos absolutos | 1 – 250 |
-  | 2 · Muy conocidas | 251 – 800 |
-  | 3 · Terreno de fans | 801 – 2.000 |
-  | 4 · Para entendidos | 2.001 – 3.800 |
-  | 5 · Underground | 3.801 – 6.000 |
+  | 1 · Household names | 1 – 250 |
+  | 2 · Well known | 251 – 800 |
+  | 3 · Fan territory | 801 – 2,000 |
+  | 4 · Deep cuts | 2,001 – 3,800 |
+  | 5 · Underground | 3,801 – 6,000 |
 
-- **Aviso de sonido** antes de empezar, con un botón «Probar sonido» (un acorde de guitarra sintetizado), porque mucha gente no se daba cuenta de que tenía que sonar música.
+- **Sound check** before starting, with a "Test sound" button (a synthesized guitar chord), because many players did not realize music was supposed to play.
 
-### Idioma
+### Language
 
-La interfaz está en **inglés y español**. Se elige sola según el idioma del navegador, y se puede cambiar con el botón **EN · ES**; la elección se recuerda. Los nombres de países se traducen automáticamente con la API `Intl` del navegador.
+The interface is in **English and Spanish**. It follows the browser's language and can be switched with the **EN · ES** button (the choice is remembered). Country names are translated with the browser's `Intl` API.
 
 ---
 
-## Estructura del proyecto
+## Project layout
 
 ```
-~/metal_archives_bands.json      ← dataset maestro: todas las bandas (fuera de la carpeta del proyecto)
+~/metal_archives_bands.json      <- master dataset: every band (outside the project folder, ~100 MB)
 
 ~/metal-archives/
 ├── README.md
-├── scraper/                     ← descarga de datos de Metal Archives e iTunes
-│   ├── scrape.py                  búsqueda avanzada completa de MA → pages/
-│   ├── merge.py                   pages/ → ~/metal_archives_bands.json
-│   ├── probe.py                   utilidad para probar consultas a la búsqueda de MA
-│   ├── members.py                 formación, foto, logo y fragmento de reseña (top 6.000) → members/
-│   ├── verify.py                  verifica en iTunes la banda correcta y guarda sus fragmentos → itunes/, disco/
-│   ├── night.sh                   proceso largo: verify.py en bucle + reconstrucción cada 30 min
-│   ├── pages/                     respuestas crudas de la búsqueda de MA (10 «jobs»)
-│   ├── members/<id>.json          extras de cada banda del juego
-│   ├── disco/<id>.json            discografía de MA (para verificar y para la pista «Disco»)
-│   ├── itunes/<id>.json           resultado de la verificación en iTunes
-│   └── *.log                      registros de members, verify y night
-└── map/                         ← construcción y publicación de la web
-    ├── reviews.py                 lista completa de reseñas de MA → reviews_pages/, reviews_by_band.json
-    ├── regions.py                 sitúa cada banda en una región de su país → regions_out/
-    ├── build.py                   genera los datos del mapa → site/
-    ├── game.py                    genera los datos del juego → site/game.json
-    ├── make_netlify.py            copia site/ en netlify/, lista para publicar
-    ├── update.py                  actualización incremental (bandas nuevas/cambiadas + reseñas nuevas)
-    ├── update_state.json          fecha de la última actualización
-    ├── reviews_pages/             lista completa de reseñas (scrape inicial)
-    ├── reviews_new/               reseñas añadidas por update.py
-    ├── reviews_by_band.json       nº de reseñas y suma de notas por banda
-    ├── geo_dl/                    geografía descargada: Natural Earth (regiones) y GeoNames (ciudades)
-    ├── regions_out/               banda → región, y la geometría de regiones por país
-    ├── site/                      la web (versión para artifacts de claude.ai)
-    │   ├── index.html               toda la aplicación: HTML + CSS + JS
-    │   ├── index.json               resumen por país: géneros × años
-    │   ├── bands.json               índice de todas las bandas, ordenado por relevancia
-    │   ├── c/<n>.json               bandas de cada país
-    │   ├── r/<n>.json               regiones de cada país (geometría + resúmenes)
-    │   ├── game.json                bandas del juego, con sus pistas y fragmentos
-    │   └── countries-50m.json       mapa del mundo (TopoJSON)
-    └── netlify/                   copia local de lo que se publica (generada; no se sube al repo)
-
-.github/workflows/pages.yml      ← publica map/site en GitHub Pages con cada push a main
+├── .github/workflows/pages.yml  <- publishes the site on GitHub Pages on every push to main
+├── scraper/                     <- downloads from Metal Archives and iTunes
+│   ├── scrape.py                  full Metal Archives advanced search -> pages/
+│   ├── merge.py                   pages/ -> ~/metal_archives_bands.json
+│   ├── probe.py                   helper to try queries against the Metal Archives search
+│   ├── members.py                 lineup, photo, logo and review passage (top 6,000 bands) -> members/
+│   ├── verify.py                  finds the right band on iTunes and stores its previews -> itunes/, disco/
+│   ├── night.sh                   long-running job: verify.py in a loop + rebuild every 30 min
+│   ├── pages/                     raw Metal Archives search responses (10 "jobs")
+│   ├── members/<id>.json          extras for each game band
+│   ├── disco/<id>.json            Metal Archives discography (for verification and the album clue)
+│   ├── itunes/<id>.json           iTunes verification result
+│   └── *.log                      logs
+└── map/                         <- builds the site
+    ├── reviews.py                 full Metal Archives review list -> reviews_pages/, reviews_by_band.json
+    ├── regions.py                 places each band in a region of its country -> regions_out/
+    ├── build.py                   map data -> site/
+    ├── game.py                    game data -> site/game.json
+    ├── make_netlify.py            site/ -> netlify/, ready to publish
+    ├── update.py                  incremental update (new/changed bands + new reviews)
+    ├── ma_countries.json          Metal Archives country codes (for search links)
+    ├── update_state.json          date of the last update
+    ├── reviews_pages/             full review list (initial scrape)
+    ├── reviews_new/               reviews added by update.py
+    ├── reviews_by_band.json       review count and rating sum per band
+    ├── geo_dl/                    downloaded geography: Natural Earth (regions) and GeoNames (cities)
+    ├── regions_out/               band -> region, and region geometry per country
+    ├── site/                      the website
+    │   ├── index.html               the whole app: HTML + CSS + JS
+    │   ├── index.json               per-country summary: genres × years
+    │   ├── bands.json               index of every band, sorted by relevance
+    │   ├── c/<n>.json               bands of each country
+    │   ├── r/<n>.json               regions of each country (geometry + summaries)
+    │   ├── game.json                game bands, with their clues and previews
+    │   └── countries-50m.json       world map (TopoJSON)
+    └── netlify/                   local copy of what gets published (generated; not in the repo)
 ```
 
-> **`site/` frente a `netlify/`:** `site/index.html` está escrito sin `<html>`, `<head>` ni `<body>`, porque los artifacts de claude.ai los añaden solos. `make_netlify.py` lo envuelve en un documento HTML completo y enlaza (hard links) los JSON, así que no ocupa espacio extra. **Se edita `site/`; lo que se publica es el resultado de `make_netlify.py`**, que GitHub genera solo en cada push. El nombre `netlify` es histórico: la web estuvo antes en Netlify.
+> **`site/` vs `netlify/`:** `site/index.html` has no `<html>`, `<head>` or `<body>`, because it was first written for claude.ai artifacts, which add them. `make_netlify.py` wraps it in a full HTML document and hard-links the JSON files (no extra disk space). **Edit `site/`. What gets published is the output of `make_netlify.py`**, which GitHub builds on every push. The name `netlify` is historical: the site used to be hosted on Netlify.
+
+Only the code, this README and `map/site/` are in the repository. Downloads and caches (~500 MB) stay local; see `.gitignore`.
 
 ---
 
-## Cómo se generan los datos (pipeline)
+## How the data is built (pipeline)
 
 ```
 Metal Archives ──scrape.py──► pages/ ──merge.py──► ~/metal_archives_bands.json ─┬─ regions.py ─► regions_out/ ─┐
                ──reviews.py─► reviews_by_band.json ─────────────────────────────┴─────────── build.py ◄──────┘
                                                                                                 │
-                                                                                     site/ (mapa: index, c/, r/, bands.json)
+                                                                                   site/ (map: index, c/, r/, bands.json)
                                                                                                 │
 Metal Archives ──members.py─► members/  ─┐                                                      │
 iTunes ─────────verify.py───► itunes/, disco/ ─┴──────── game.py ──► site/game.json             │
@@ -131,128 +135,131 @@ iTunes ─────────verify.py───► itunes/, disco/ ─┴�
                                                                           └─ make_netlify.py ◄──┘ ──► netlify/
 ```
 
-| Paso | Script | Qué hace | Duración aprox. |
+| Step | Script | What it does | Approx. time |
 |---|---|---|---|
-| 1 | `scraper/scrape.py` | Descarga la búsqueda avanzada de MA en 10 pasadas (por estado, ubicación, temas, notas y año), porque cada pasada solo devuelve algunas columnas. Se puede reanudar. | horas (una sola vez) |
-| 2 | `scraper/merge.py` | Une las 10 pasadas en una ficha por banda. | segundos |
-| 3 | `map/reviews.py` | Descarga la lista alfabética de todas las reseñas (~700 páginas) y cuenta reseñas y nota media por banda. | una sola vez |
-| 4 | `map/regions.py` | Sitúa cada banda en una región a partir de su campo «Location», usando GeoNames y Natural Earth. | ~15 s |
-| 5 | `map/build.py` | Normaliza géneros, resuelve las bandas «International», calcula la relevancia y escribe los JSON de la web. | ~30 s |
-| 6 | `scraper/members.py` | Para las 6.000 bandas más relevantes: formación, foto, logo y un fragmento de reseña sin nombres. | ~3 h la primera vez |
-| 7 | `scraper/verify.py` | Busca cada banda del juego en iTunes y confirma cuál es la buena comparando discos (ver [Verificación](#verificación-itunes)). | ~20 h la primera vez (a una llamada cada 6 s) |
-| 8 | `map/game.py` | Junta todo en `site/game.json`. | segundos |
-| 9 | `map/make_netlify.py` | Genera `netlify/`. | segundos |
+| 1 | `scraper/scrape.py` | Downloads the Metal Archives advanced search in 10 passes (by status, location, themes, notes and year), because each pass only returns some columns. Resumable. | hours (once) |
+| 2 | `scraper/merge.py` | Merges the 10 passes into one record per band. | seconds |
+| 3 | `map/reviews.py` | Downloads the alphabetical list of all reviews (~700 pages) and counts reviews and average rating per band. | once |
+| 4 | `map/regions.py` | Places each band in a region from its "Location" field, using GeoNames and Natural Earth. | ~15 s |
+| 5 | `map/build.py` | Normalizes genres, resolves "International" bands, computes relevance and writes the site's JSON. | ~30 s |
+| 6 | `scraper/members.py` | For the 6,000 most relevant bands: lineup, photo, logo and a review passage without names. | ~3 h the first time |
+| 7 | `scraper/verify.py` | Looks up each game band on iTunes and confirms which artist is the right one by comparing albums (see [iTunes verification](#itunes-verification)). | ~20 h the first time (one call every 6 s) |
+| 8 | `map/game.py` | Puts everything together in `site/game.json`. | seconds |
+| 9 | `map/make_netlify.py` | Builds `netlify/`. | seconds |
 
-Los pasos 1–3 y 6 solo hacen falta una vez. Después, `update.py` mantiene los datos al día de forma incremental.
+Steps 1–3 and 6 are only needed once. After that, `update.py` keeps the data up to date incrementally.
 
 ---
 
-## Comandos
+## Commands
 
-Todo es Python 3 de la librería estándar (sin dependencias) y `curl`. Las rutas son relativas a `~/metal-archives`.
+Everything is Python 3 standard library (no dependencies) plus `curl`. Paths are relative to `~/metal-archives`.
 
-### Uso habitual
+### Everyday use
 
-| Comando | Para qué |
+| Command | Purpose |
 |---|---|
-| `cd map && python3 update.py` | **Actualizar todo** con los cambios de Metal Archives desde la última vez y regenerar `netlify/`. |
-| `cd map && python3 update.py --dry-run` | Ver cuántas bandas y reseñas han cambiado, sin tocar nada. |
-| `cd map && python3 update.py --since 2026-11-01` | Actualizar desde una fecha concreta. |
-| `cd map && python3 game.py && python3 make_netlify.py` | Regenerar el juego y la carpeta de publicación (p. ej. tras verificar más bandas). |
-| `cd map && python3 make_netlify.py` | Regenerar solo `netlify/` (p. ej. tras editar `site/index.html`). |
-| `cd scraper && nohup caffeinate -ims bash night.sh > night.log 2>&1 &` | Lanzar la verificación de iTunes en segundo plano, sin que el Mac se duerma. |
+| `cd map && python3 update.py` | **Update everything** with Metal Archives' changes since last time and rebuild. |
+| `cd map && python3 update.py --dry-run` | See how many bands and reviews changed, without touching anything. |
+| `cd map && python3 update.py --since 2026-11-01` | Update from a given date. |
+| `cd map && python3 game.py && python3 make_netlify.py` | Rebuild the game data and the publish folder (e.g. after verifying more bands). |
+| `cd map && python3 make_netlify.py` | Rebuild only `netlify/` (e.g. after editing `site/index.html`). |
+| `git add -A && git commit -m "…" && git push` | Publish (see [Publishing](#publishing-a-new-version)). |
+| `cd scraper && nohup caffeinate -ims bash night.sh > night.log 2>&1 &` | Run the iTunes verification in the background without letting the Mac sleep. |
 
-### Referencia completa
+### Full reference
 
-| Script | Argumentos | Notas |
+| Script | Arguments | Notes |
 |---|---|---|
-| `scraper/scrape.py [job…]` | jobs: `status1`…`status6`, `location`, `themes`, `notes`, `year` (por defecto, todos) | Variable `DELAY` (por defecto 0.8 s entre peticiones). Se puede reanudar. |
-| `scraper/merge.py <salida.json>` | ruta del dataset | Normalmente `~/metal_archives_bands.json`. |
-| `scraper/probe.py "<query>"` | parámetros de la búsqueda avanzada | Muestra cuántos resultados da y qué columnas devuelve. |
-| `scraper/members.py [N=6000] [hilos=3]` | | Se salta las bandas ya descargadas, así que relanzarlo solo baja las que falten. |
-| `scraper/verify.py [N=6000] [hilos=2]` | variable `ITUNES_GAP` (s entre llamadas a iTunes; por defecto 3.2) | Se salta las ya verificadas. Si iTunes responde 403, espera de 15 a 30 min. |
-| `scraper/night.sh` | variable `ITUNES_GAP` (por defecto 6) | Hasta 8 pasadas de `verify.py`. Cada 30 min regenera `game.json` y `netlify/`. |
-| `map/reviews.py` | | Se puede reanudar. Para tener las reseñas al día basta con `update.py`. |
-| `map/regions.py` | | Necesita `geo_dl/` (ver abajo). |
-| `map/build.py <carpeta>` | normalmente `site` | Sin argumento, solo muestra estadísticas de prueba. |
-| `map/game.py [--mixed]` | | Sin opción: **solo bandas verificadas**. Con `--mixed`: también las no verificadas, con búsqueda en directo. |
+| `scraper/scrape.py [job…]` | jobs: `status1`…`status6`, `location`, `themes`, `notes`, `year` (default: all) | `DELAY` env var (default 0.8 s between requests). Resumable. |
+| `scraper/merge.py <output.json>` | dataset path | Usually `~/metal_archives_bands.json`. |
+| `scraper/probe.py "<query>"` | advanced-search parameters | Prints how many results a query returns and which columns. |
+| `scraper/members.py [N=6000] [threads=3]` | | Skips bands already downloaded, so re-running only fetches the missing ones. |
+| `scraper/verify.py [N=6000] [threads=2]` | `ITUNES_GAP` env var (seconds between iTunes calls; default 3.2) | Skips bands already verified. On a 403 from iTunes it pauses 15–30 min. |
+| `scraper/night.sh` | `ITUNES_GAP` env var (default 6) | Up to 8 passes of `verify.py`; rebuilds `game.json` and `netlify/` every 30 min. |
+| `map/reviews.py` | | Resumable. To keep reviews current, `update.py` is enough. |
+| `map/regions.py` | | Needs `geo_dl/` (see below). |
+| `map/build.py <folder>` | usually `site` | Without an argument it only prints test statistics. |
+| `map/game.py [--mixed]` | | Default: **verified bands only**. `--mixed`: unverified bands too, with live iTunes search. |
 | `map/make_netlify.py` | | |
-| `map/update.py [--dry-run] [--since AAAA-MM-DD]` | | Ver [Actualizar los datos](#actualizar-los-datos). |
+| `map/update.py [--dry-run] [--since YYYY-MM-DD]` | | See [Updating the data](#updating-the-data). |
 
-**`geo_dl/`** contiene `admin1.geojson` (Natural Earth 10m, divisiones administrativas de primer nivel), `cities1000.txt` y `admin1Codes.txt` (GeoNames). Ya están descargados.
+**`geo_dl/`** holds `admin1.geojson` (Natural Earth 10m, first-level administrative divisions), `cities1000.txt` and `admin1Codes.txt` (GeoNames). They are already downloaded.
 
 ---
 
-## Tareas habituales
+## Common tasks
 
-### Publicar una nueva versión
+### Publishing a new version
 
-Basta con hacer commit y push de los cambios en `map/site/` (y del código):
+Commit and push the changes in `map/site/` (and the code):
 
 ```bash
 cd ~/metal-archives
-git add -A && git commit -m "Actualizar datos" && git push
+git add -A && git commit -m "Update data" && git push
 ```
 
-GitHub Actions ejecuta `map/make_netlify.py` y publica el resultado en https://miguelsr.js.org/metal-atlas/ en uno o dos minutos. Para ver el progreso o los errores: pestaña **Actions** del repo, o `gh run list`.
+GitHub Actions runs `map/make_netlify.py` and publishes the result at https://miguelsr.js.org/metal-atlas/ in about a minute. Progress and errors: the repo's **Actions** tab, or `gh run list`.
 
-`.gitignore` deja fuera del repo las descargas y cachés (unos 500 MB, regenerables con los scripts), los logs y `map/netlify/`. **Esas cachés solo existen en este Mac**: la verificación de iTunes (`scraper/itunes/`) costó unas 20 horas, así que conviene tener copia de seguridad de `~/metal-archives` y de `~/metal_archives_bands.json`.
+**The caches only exist on the local machine.** The iTunes verification (`scraper/itunes/`) took about 20 hours, so keep a backup of `~/metal-archives` and `~/metal_archives_bands.json`.
 
-### Actualizar los datos
+### Updating the data
 
 ```bash
 cd ~/metal-archives/map
-python3 update.py --dry-run     # opcional: ver cuánto ha cambiado
+python3 update.py --dry-run     # optional: see how much changed
 nohup caffeinate -ims python3 update.py > update.log 2>&1 &
-tail -f update.log              # seguir el progreso; termina con «done…»
+tail -f update.log              # follow progress; it ends with "done…"
 ```
 
-Qué hace `update.py`:
+What `update.py` does:
 
-1. **Detecta los cambios** leyendo dos listados de Metal Archives, mes a mes y página a página (200 por página, de más nuevo a más antiguo), hasta llegar a la fecha de la última actualización:
-   - *What's new* (`archives/ajax-band-list/selection/AAAA-MM/by/created`)
+1. **Finds what changed** by reading two Metal Archives lists, month by month and page by page (200 per page, newest first), until it reaches the date of the last update:
+   - *What's new* (`archives/ajax-band-list/selection/YYYY-MM/by/created`)
    - *What's updated* (`…/by/modified`)
-2. **Detecta las reseñas nuevas** con la lista mensual de reseñas (`review/ajax-list-browse/by/date/selection/AAAA-MM`). Cada reseña tiene un id, así que las ya contadas se saltan. Así se actualiza el recuento de **todas** las bandas, no solo de las modificadas.
-3. **Descarga la ficha** de cada banda nueva o modificada (1 petición), además de:
-   - **bandas nuevas:** una búsqueda exacta por nombre para sacar sus alias (a.k.a.), que solo aparecen ahí;
-   - **bandas del juego:** formación, foto y logo (de la misma ficha) y su discografía.
-   - Las bandas que dan 404 (borradas de MA) se eliminan.
-4. **Guarda** `~/metal_archives_bands.json` (dejando una copia del anterior en `~/metal_archives_bands.json.bak`) y `reviews_by_band.json`.
-5. **Reconstruye:** `regions.py` → `build.py` → `members.py` y `verify.py` (solo las bandas que entren nuevas en el top 6.000) → `game.py` → `make_netlify.py`.
-6. **Apunta en `update_state.json`** la fecha del cambio más reciente.
+2. **Finds new reviews** in the monthly "latest reviews" list (`review/ajax-list-browse/by/date/selection/YYYY-MM`). A review is identified by its album id and the reviewer's user id (a user reviews an album only once), so the ones already counted are skipped. This updates the review count of **every** band, not just the changed ones.
+3. **Downloads the band page** of each new or changed band (1 request), plus:
+   - **new bands:** an exact-name search, the only place that lists their aliases (a.k.a.);
+   - **game bands:** lineup, photo and logo (from the same page) and their discography.
+   - Bands that return 404 (deleted from Metal Archives) are removed.
+4. **Saves** `~/metal_archives_bands.json` (keeping the previous one as `~/metal_archives_bands.json.bak`) and `reviews_by_band.json`.
+5. **Rebuilds:** `regions.py` → `build.py` → `members.py` and `verify.py` (only for bands new to the top 6,000) → `game.py` → `make_netlify.py`.
+6. **Records** the date of the newest change in `update_state.json`.
 
-**Cómo sabe desde cuándo actualizar:** por `map/update_state.json` (`{"since": "AAAA-MM-DD HH:MM"}`, en hora de Metal Archives, unas 6 h por detrás de España).
-- **Siempre** empieza un día antes de esa fecha, por seguridad: repasar una banda dos veces no hace daño.
-- **Si el fichero no existe**, usa el 21/11/2026, la fecha del scrape completo.
-- **Para forzar otra fecha**, usa `--since`.
+**How it knows where to start:** `map/update_state.json` (`{"since": "YYYY-MM-DD HH:MM"}`, in Metal Archives server time, about 6 h behind Central European time).
+- It **always** starts one day earlier, to be safe: going over a band twice does no harm.
+- **If the file does not exist**, it starts from 2026-11-21, the date of the full scrape.
+- **To force a date**, use `--since`.
 
-Duración: algo más de 1 s por banda modificada (petición + pausa de cortesía de 0,8 s), más unos minutos de reconstrucción. La primera ejecución (22/11/2026, ~2.000 bandas cambiadas en dos días) tardó unos 45 minutos. En noviembre de 2026 cambiaban ~1.000 bandas al día, así que conviene actualizar a menudo para que cada pasada sea corta.
+Time: a little over 1 s per changed band (request + 0.8 s courtesy pause), plus a few minutes of rebuilding. In November 2026 about 1,000 bands changed per day; the first run (~2,000 bands) took about 45 minutes. Running it often keeps each pass short.
 
-### Verificar más bandas del juego en iTunes
+After updating, publish with `git add -A && git commit && git push`.
+
+### Verifying more game bands on iTunes
 
 ```bash
 cd ~/metal-archives/scraper
 nohup caffeinate -ims bash night.sh > night.log 2>&1 &
-tail night.log        # una línea «levels: […]» cada 30 min
-tail verify.log       # avisos de bloqueo de iTunes (403)
+tail night.log        # a "levels: […]" line every 30 min
+tail verify.log       # iTunes block warnings (403)
 ```
 
-Puede ir en paralelo con `update.py`: usan servidores distintos.
+It can run alongside `update.py`: they talk to different servers.
 
-### Cambiar textos, colores o comportamiento de la web
+### Changing texts, colors or behavior
 
-Todo está en `map/site/index.html`. Después ejecuta `python3 map/make_netlify.py`.
+Everything is in `map/site/index.html`. Run `python3 map/make_netlify.py` afterwards to check locally, then push.
 
-- **Textos:** en el diccionario `TX` (claves `en` y `es`) al principio del script. Se usan con `t("clave", …)`.
-- **Niveles del juego:** en `LEVELS` de `game.py`. Sus nombres, en `TX.*.levels`.
+- **Texts:** the `TX` dictionary (keys `en` and `es`) near the top of the script, used through `t("key", …)`.
+- **Game levels:** `LEVELS` in `game.py`; their names in `TX.*.levels`.
 
 ---
 
-## Formato de los datos
+## Data formats
 
-### `~/metal_archives_bands.json` (dataset maestro)
+### `~/metal_archives_bands.json` (master dataset)
 
-Lista de bandas, una ficha por banda:
+A list with one record per band:
 
 ```json
 {"id": 84, "name": "Yngwie Malmsteen", "aka": "Rising Force, …", "aka_list": ["Rising Force", …],
@@ -260,102 +267,109 @@ Lista de bandas, una ficha por banda:
  "genre": "Neoclassical Power Metal/Shred", "country": "Sweden",
  "location": "Stockholm (early); Miami, Florida, United States (later)",
  "status": "Active", "formed_in": 1978, "themes": "Society, War, …",
- "label": "Rising Force Records",            // "000INDIE000" = sin sello
+ "label": "Rising Force Records",            // "000INDIE000" = no label
  "notes": "…", "notes_truncated": true, "contact_emails": null}
 ```
 
-### Ficheros de la web (`site/`)
+### Site files (`site/`)
 
-Van compactados (arrays en vez de objetos) para que pesen poco.
+Compact (arrays instead of objects) to keep them small.
 
-| Fichero | Contenido |
+| File | Contents |
 |---|---|
-| `index.json` | `genres`: lista de géneros (por nº de bandas). `countries[]`: `{name, file, r (tiene regiones), y: {año: [bandas, activas]}, g: {género: {año: nº}}}`. Con esto el mapa calcula colores y filtros sin cargar las bandas. |
-| `c/<n>.json` | Bandas de un país: `labels` y `rows` = `[id, nombre, slug\|0, año, estado, idx sello, género literal, [idx géneros], nº reseñas, nota media, [regiones]]`, ordenadas por relevancia. |
-| `r/<n>.json` | Regiones de un país: nombres, geometría (rellenos y bordes) y el mismo resumen género × año por región. |
-| `bands.json` | Índice global para el buscador y el juego: columnas paralelas `n` (nombres), `y` (años), `a` (activas), `g` (géneros), `l` (país + regiones), `id`, `s` (slugs no estándar). Ordenado por relevancia. |
-| `game.json` | `levels`: 5 listas de índices. `b`: filas `[id, nombre, slug, año, países, miembros, cabecera de formación, foto, reseña, % reseña, logo, id artista iTunes, [discos], [[url mp3, canción, disco, portada], …], ciudad]`. Hasta 5 canciones por banda, de discos distintos, con las URLs acortadas (`game.py` quita el dominio y `index.html` lo vuelve a poner). |
+| `index.json` | `genres`: list of genres (by band count). `countries[]`: `{name, file, r (has regions), cc (Metal Archives country code), y: {year: [bands, active]}, g: {genre: {year: count}}}`. Enough for the map to compute colors and filters without loading any band. |
+| `c/<n>.json` | Bands of one country: `labels` and `rows` = `[id, name, slug\|0, year, status, label idx, genre text, [genre idx], reviews, avg rating, [regions]]`, sorted by relevance. |
+| `r/<n>.json` | Regions of one country: names, geometry (fills and borders) and the same genre × year summary per region. |
+| `bands.json` | Global index for the band search and the game: parallel columns `n` (names), `y` (years), `a` (active), `g` (genres), `l` (country + regions), `id`, `s` (non-standard slugs). Sorted by relevance. |
+| `game.json` | `levels`: 5 lists of indices. `b`: rows `[id, name, slug, year, countries, members, lineup header, photo, review, review %, logo, iTunes artist id, [albums], [[preview url, song, album, cover], …], location]`. Up to 5 songs per band, from different albums, with shortened URLs (`game.py` strips the common prefix, `index.html` puts it back). |
 
-### Cachés del scraper
+### Scraper caches
 
-| Fichero | Contenido |
+| File | Contents |
 |---|---|
-| `members/<id>.json` | `{h: cabecera, m: [[nombre, instrumento]…], p: foto, lg: logo, r: fragmento de reseña, ra: disco reseñado, rs: nota}` |
-| `disco/<id>.json` | `[[id disco, título, tipo, año], …]` |
-| `itunes/<id>.json` | `{a: id artista, c: [ids de discos que coinciden], n: [títulos que coinciden], t: [[mp3, canción, disco, portada]…], v: 3}`. Si `t` está vacío, no se encontró en iTunes. |
+| `members/<id>.json` | `{h: lineup header, m: [[name, instrument]…], p: photo, lg: logo, r: review passage, ra: reviewed album, rs: rating}` |
+| `disco/<id>.json` | `[[album id, title, type, year], …]` |
+| `itunes/<id>.json` | `{a: artist id, c: [matching album ids], n: [matching titles], t: [[preview, song, album, cover]…], v: 3}`. An empty `t` means the band was not found on iTunes. |
 
 ---
 
-## Cómo funciona por dentro
+## How it works
 
-### Géneros
+### Genres
 
-El género de MA es texto libre («Crust Punk (early); Progressive Sludge/Groove Metal (later)»). `build.py` lo descompone en géneros simples:
+The Metal Archives genre is free text ("Crust Punk (early); Progressive Sludge/Groove Metal (later)"). `build.py` splits it into atomic genres:
 
-- **separa** por épocas (`;`), comas y barras;
-- **quita** «(early)», «with … influences», etc.;
-- **completa** los fragmentos sueltos: «Sludge/Groove Metal» → «Sludge Metal» + «Groove Metal».
+- **splits** by era (`;`), commas and slashes;
+- **removes** "(early)", "with … influences", etc.;
+- **completes** loose fragments: "Sludge/Groove Metal" → "Sludge Metal" + "Groove Metal".
 
-Una banda cuenta en cada uno de sus géneros, así que los totales por género se solapan.
+A band counts once for each of its genres, so per-genre totals overlap.
 
-### Países y regiones
+### Countries and regions
 
-- **Bandas «International»:** se asignan a los países que se reconocen en su campo de ubicación.
-- **Regiones:** `regions.py` busca la ubicación de cada banda en la lista de ciudades de GeoNames. Las coordenadas de la ciudad se sitúan en un polígono regional de Natural Earth.
-- **Países agrupados:** en algunos países (Reino Unido, España, Italia, Francia…) Natural Earth trae unidades demasiado pequeñas, así que se agrupan por región.
+- **"International" bands** are assigned to the countries recognized in their location field.
+- **Regions:** `regions.py` looks up each band's location in the GeoNames city list and places the city's coordinates inside a Natural Earth regional polygon.
+- **Grouped countries:** for some countries (United Kingdom, Spain, Italy, France…) Natural Earth has very small units, so they are grouped by region.
 
-### Relevancia
+### Links to Metal Archives' search
 
-Sirve para ordenar los listados y para los niveles del juego. Se calcula en `build.py`:
+The band counts in each card link to `metal-archives.com/search/advanced/searching/bands` with the card's filters: country code (`country[]`), years (`yearCreationFrom/To`), genre, band name, `status[]=1` for active bands and, in region cards, the region name as `location`.
+- **Counts are close but not identical** (e.g. Spain from 1990: 4,494 on Metal Archives vs 4,606 here). Metal Archives matches genre and location as text, and the map also counts "International" bands under their countries.
+- **Region names:** for grouped regions the page translates local names to the English ones Metal Archives uses ("Cataluña" → "Catalonia").
+- **No region link** for the United Kingdom and Slovenia, whose regions are statistical areas that never appear in band locations.
 
-| Peso | Señal | Por qué |
+### Relevance
+
+Used to sort the lists and to build the game levels. Computed in `build.py`:
+
+| Weight | Signal | Why |
 |---|---|---|
-| 55 % | nº de reseñas en MA (logarítmico) | la mejor medida de popularidad disponible |
-| 30 % | antigüedad en MA (id bajo = alta temprana) | las primeras bandas registradas (2002–2005) son mayoritariamente las clásicas |
-| 10 % | tamaño del sello (bandas del sello en el dataset) | sellos grandes, bandas más conocidas |
-| 5 % | notas largas | las bandas importantes están mejor documentadas |
+| 55 % | number of Metal Archives reviews (log) | the best popularity signal available |
+| 30 % | age in Metal Archives (low id = added early) | the first bands added (2002–2005) are mostly the classics |
+| 10 % | label size (label's bands in the dataset) | bigger labels, better-known bands |
+| 5 % | long notes | important bands are better documented |
 
-### Fragmentos de audio
+### Audio previews
 
-Vienen de la **API de búsqueda de iTunes**: es gratuita, no necesita clave y permite llamadas desde el navegador. Cada canción tiene un mp3/m4a de 30 s en `audio-ssl.itunes.apple.com`. Hay dos formas de conseguirlo:
+They come from the **iTunes Search API**: free, no key, and callable from the browser. Every song has a 30-second m4a at `audio-ssl.itunes.apple.com`. There are two ways to get one:
 
-- **Fragmento guardado** (bandas verificadas): la URL del audio ya va en `game.json`, así que el navegador no consulta la API de iTunes. Siempre es la banda correcta. En la pestaña *Network* solo se ve una URL opaca, y el fichero no lleva artista ni título.
-- **Búsqueda en directo** (resto de bandas, y el ▶ del modo mapa): el navegador busca el artista por nombre en iTunes y coge sus canciones. Con nombres repetidos (hay más de 40 «Hydra» en iTunes) puede sonar otra banda.
+- **Stored preview** (verified bands): the audio URL is already in `game.json`, so the browser never calls the iTunes API. It is always the right band. The Network tab only shows an opaque URL, and the file carries no artist or title.
+- **Live search** (the ▶ in map mode): the browser looks the artist up by name on iTunes and takes their songs. With shared names (there are 40+ "Hydra" on iTunes) another band may play.
 
-**El juego solo usa bandas verificadas** (5.099 de las 6.000 a 23/11/2026), así que siempre suena la banda correcta y el navegador no consulta la API de iTunes durante la partida. Las ~900 restantes no aparecen en iTunes con una discografía que coincida, casi siempre porque no están en Apple Music.
+**The game only uses verified bands** (5,099 of 6,000 as of 2026-11-23), so the right band always plays and the browser never calls the iTunes API during a game. The remaining ~900 are not on iTunes with a matching discography, almost always because they are not on Apple Music. `game.py --mixed` would add them with live search; it was dropped because it led to "No music" and namesakes.
 
-Con `game.py --mixed` entrarían también esas bandas, con búsqueda en directo. Se dejó de usar porque daba «Sin música» y homónimos. La búsqueda en directo sigue existiendo para el ▶ del modo mapa.
+### iTunes verification
 
-### Verificación iTunes
+`verify.py` decides which of the iTunes artists with the same name is the Metal Archives band:
 
-`verify.py` decide cuál de los artistas de iTunes con el mismo nombre es la banda de MA:
+1. Downloads the Metal Archives discography.
+2. Searches iTunes for every artist with exactly that name, metal/rock genres first, up to 12.
+3. With one more call, fetches the songs of all those candidates.
+4. The winner is the candidate with the most albums whose title matches the discography. Titles are normalized without "Remastered", "Deluxe", parentheses, etc. A self-titled album only counts if the year matches too (±1).
+5. Keeps up to 12 songs, **only from the matching albums**. So when iTunes mixes two namesake bands on one artist page (it happened with Graveyard from Spain and from Sweden), only the right one plays.
 
-1. Descarga la discografía de MA.
-2. Busca en iTunes todos los artistas con exactamente ese nombre. Primero los de géneros metal/rock, hasta 12.
-3. Con una sola llamada más, pide las canciones de todos esos candidatos.
-4. Gana el candidato con más discos cuyo título coincide con la discografía de MA. Los títulos se normalizan sin «Remastered», «Deluxe», paréntesis, etc. Un disco homónimo solo cuenta si además coincide el año (±1).
-5. Guarda hasta 12 canciones, **solo de los discos que coinciden**. Así, si iTunes mezcla en la misma página a dos bandas homónimas (pasaba con Graveyard de España y de Suecia), solo suena la buena.
+### Review passage
 
-### Fragmento de reseña
-
-`members.py` toma la reseña mejor valorada de la banda y busca un trozo de 140–320 caracteres, formado por frases completas, que no mencione el nombre de la banda ni el del disco. Prefiere los párrafos centrales, que suelen describir el sonido.
+`members.py` takes the band's highest-rated review and looks for a 140–320 character stretch of whole sentences that mentions neither the band nor the album. It prefers middle paragraphs, which tend to describe the sound.
 
 ---
 
-## Límites y problemas conocidos
+## Limits and known issues
 
-- **iTunes limita mucho las peticiones.** Oficialmente permite unas 20 por minuto por IP, pero con tráfico continuo bloquea antes (error 403) y el bloqueo dura bastante.
-  - **Esto afecta también a tu navegador**, porque comparte la IP: mientras se verifica, el ▶ del modo mapa puede fallar en casa. Los visitantes de la web no se ven afectados.
-  - `verify.py` va a una llamada cada 6 s y, ante un 403, se detiene 15–30 min.
-  - Si hiciera falta más velocidad, la vía oficial es la Apple Music API, que exige una cuenta de Apple Developer.
-- **Búsqueda en directo (▶ del modo mapa):** puede sonar un homónimo o no encontrarse música.
-- **`game.json` es legible:** un jugador curioso podría buscar ahí la URL del audio que suena. Se ofuscó en su día y se quitó a propósito.
-- **`update.py` no detecta:**
-  - alias nuevos de bandas que ya existían (solo los saca para bandas nuevas);
-  - reseñas borradas (solo suma las nuevas).
-- **Fechas de Metal Archives:** los listados usan la hora del servidor de MA. Por eso cada actualización repasa un día de margen.
-- **Uso respetuoso:** todos los scripts que consultan MA esperan ~0,8 s entre peticiones y reintentan con espera creciente. No hay que bajar esos tiempos.
+- **iTunes rate limiting is strict.** The documented limit is about 20 calls per minute per IP, but with sustained traffic it blocks earlier (HTTP 403) and the block lasts a while.
+  - **It also affects your browser**, which shares the IP: while verifying, the map's ▶ may fail at home. Site visitors are not affected.
+  - `verify.py` makes one call every 6 s and pauses 15–30 min on a 403.
+  - If more speed were ever needed, the official route is the Apple Music API, which requires an Apple Developer account.
+- **Live search (map ▶):** a namesake band may play, or no music may be found.
+- **Review passages can mention band members** (e.g. a singer's name). The filter only hides the band and album names.
+- **`game.json` is readable:** a curious player could look up the URL of the song that is playing. It was obfuscated once and the obfuscation was removed on purpose.
+- **Duplicate reviews in the initial scrape:** the full review list has 137,809 rows but 135,553 distinct reviews (rows probably repeated while paginating). Some bands' review counts are inflated by about 1.6 %; the effect on relevance is minimal.
+- **`update.py` does not detect:**
+  - new aliases of bands that already existed (it only fetches them for new bands);
+  - deleted reviews (it only adds new ones).
+- **Metal Archives dates** use the Metal Archives server's time zone, which is why each update goes back one extra day.
+- **Be polite:** every script that queries Metal Archives waits ~0.8 s between requests and retries with growing waits. Do not lower those delays.
 
 ---
 
-**Créditos de datos:** [Encyclopaedia Metallum](https://www.metal-archives.com) · [Natural Earth](https://www.naturalearthdata.com) · [GeoNames](https://www.geonames.org) (CC BY 4.0) · fragmentos de audio vía Apple Music / iTunes Search API.
+**Data credits:** [Encyclopaedia Metallum](https://www.metal-archives.com) · [Natural Earth](https://www.naturalearthdata.com) · [GeoNames](https://www.geonames.org) (CC BY 4.0) · audio previews via Apple Music / iTunes Search API.

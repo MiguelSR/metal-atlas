@@ -65,19 +65,18 @@ def genres_of(g):
 
 
 # ---------- relevance ----------
-# 1) Antigüedad en Metal Archives: el ID crece con la fecha de alta; las bandas que se dieron de alta
-#    primero (2002-2005) son en su mayoría las más conocidas. Percentil invertido del ID.
-# 2) Sello: tamaño del catálogo del sello actual dentro del propio dataset (log). Sin sello = 0.
-# 3) Documentación: notas largas (truncadas en la búsqueda) > notas cortas > sin notas.
-# 4) Alias (a.k.a.): las bandas conocidas suelen tener variantes registradas.
-# 5) Estado: pequeña bonificación a activas.
+# score = 0.55 reviews + 0.30 age + 0.10 label + 0.05 notes, each scaled to 0..1:
+# 1) Age in Metal Archives: IDs grow with the date a band was added; the bands added first (2002-2005)
+#    are mostly the best known ones. Inverted (log) rank of the ID.
+# 2) Label: size of the band's current label within the dataset itself (log). No label = 0.
+# 3) Documentation: long notes (truncated in the search results) > short notes > no notes.
 ids = sorted(b["id"] for b in bands)
 rank = {i: n for n, i in enumerate(ids)}
 roster = Counter(b["label"] for b in bands if b["label"] and b["label"] != "000INDIE000")
 maxr = math.log1p(max(roster.values()))
 
 
-# 0) Reseñas en Metal Archives (señal principal de popularidad): log del nº de reseñas.
+# 0) Reviews in Metal Archives (the main popularity signal): log of the number of reviews.
 import os
 RV = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "reviews_by_band.json")))
 RV = {int(k): v for k, v in RV.items()}
@@ -145,6 +144,8 @@ def cube_of(bs):
 
 
 index = {"genres": GEN, "countries": []}
+# Metal Archives country codes (from metal-archives.com/browse/country), for links to its advanced search
+MACC = json.load(open(os.path.join(HERE, "ma_countries.json")))
 for ci, c in enumerate(CN):
     bs = sorted(by_c[c], key=lambda b: -b["_s"])
     regs_of = lambda b: BR.get(str(b["id"]), {}).get(c, [])
@@ -167,7 +168,7 @@ for ci, c in enumerate(CN):
         yrs[y][1] += b["status"] == "Active"
         for g in b["_g"]:
             cube[GI[g]][y] += 1
-    index["countries"].append({"name": c, "file": ci, "r": has_r, "y": {str(k): v for k, v in sorted(yrs.items())},
+    index["countries"].append({"name": c, "file": ci, "r": has_r, "cc": MACC.get(c), "y": {str(k): v for k, v in sorted(yrs.items())},
                                "g": {str(g): {str(k): v for k, v in sorted(ys.items())} for g, ys in cube.items()}})
     labels, li, rows = [], {}, []
     for b in bs:
@@ -187,7 +188,7 @@ for ci, c in enumerate(CN):
               ensure_ascii=False, separators=(",", ":"))
 json.dump(index, open(os.path.join(site, "index.json"), "w"), ensure_ascii=False, separators=(",", ":"))
 
-# ---------- índice de nombres (buscador de bandas), ordenado por relevancia ----------
+# ---------- name index (band search and game), sorted by relevance ----------
 CIX = {c: i for i, c in enumerate(CN)}
 allb = sorted(bands, key=lambda b: -b["_s"])
 names, years, active, genres, locs, ids, slugs = [], [], [], [], [], [], {}

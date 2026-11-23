@@ -1,8 +1,8 @@
-"""Asigna cada banda a regiones (admin-1) dentro de su país y genera la geometría regional.
+"""Assigns each band to regions (admin-1) within its country and builds the regional geometry.
 
-Entrada:  ~/metal_archives_bands.json, geo_dl/admin1.geojson (Natural Earth 10m), geo_dl/cities1000.txt + admin1Codes.txt (GeoNames)
-Salida:   regions_out/band_regions.json   {band_id: {país: [idx región, ...]}}
-          regions_out/geo/<país>.json      {"regions": [nombre...], "fills": FeatureCollection, "borders": MultiLineString}
+Input:   ~/metal_archives_bands.json, geo_dl/admin1.geojson (Natural Earth 10m), geo_dl/cities1000.txt + admin1Codes.txt (GeoNames)
+Output:  regions_out/band_regions.json   {band_id: {country: [region idx, ...]}}
+         regions_out/geo/<country>.json   {"regions": [name...], "fills": FeatureCollection, "borders": MultiLineString}
 """
 import json, os, re, unicodedata, sys
 from collections import defaultdict
@@ -11,9 +11,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DL = os.path.join(HERE, "geo_dl")
 OUT = os.path.join(HERE, "regions_out")
 os.makedirs(os.path.join(OUT, "geo"), exist_ok=True)
-Q = 100  # cuantización: 0,01°
+Q = 100  # quantization: 0.01°
 
-# países demasiado troceados en Natural Earth -> se agrupan por su campo "region"
+# countries split into too many small units in Natural Earth -> grouped by their "region" field
 GROUP = {"United Kingdom", "Slovenia", "Latvia", "Italy", "France", "Spain", "Philippines"}
 NE_TO_MA = {"United States of America": "United States", "Czech Republic": "Czechia", "Republic of Serbia": "Serbia",
             "South Korea": "Korea, South", "Turkey": "Türkiye", "Macedonia": "North Macedonia", "East Timor": "East Timor",
@@ -32,7 +32,7 @@ MA = {b["country"] for b in bands}
 
 # ---------- Natural Earth ----------
 feats = json.load(open(os.path.join(DL, "admin1.geojson")))["features"]
-units = defaultdict(list)  # país MA -> [props, polys]
+units = defaultdict(list)  # MA country -> [props, polys]
 iso = {}
 for f in feats:
     p = f["properties"]
@@ -70,7 +70,7 @@ def pip(x, y, ring):
     return inside
 
 
-COUNTRY = {}  # país -> dict(regions, rnames index, units[(ridx, polys, bbox)])
+COUNTRY = {}  # country -> dict(regions, rnames index, units[(ridx, polys, bbox)])
 for c, us in units.items():
     grouped = c in GROUP
     regions, ridx, names = [], {}, defaultdict(set)
@@ -85,7 +85,7 @@ for c, us in units.items():
         if c == "Mexico" and p.get("name") == "Distrito Federal":
             p = {**p, "name_en": "Ciudad de México", "name_alt": "Mexico City|CDMX|Distrito Federal"}
         en = p.get("name_en")
-        # nombre en inglés salvo que falte, se repita o choque con otro nombre local (p. ej. DF de México = "Mexico")
+        # English name, unless it is missing, repeated or clashes with another local name (e.g. Mexico City's DF = "Mexico")
         if not en or en_count[en] > 1 or (en in taken and en != p["name"]):
             en = p["name"] or p.get("woe_name") or p.get("gn_name") or "?"
         key = (p.get("region") or p["name"]) if grouped else en
@@ -112,7 +112,7 @@ def locate(c, lon, lat):
             best = r if best is None else best
     if best is not None:
         return best
-    # fuera de todo polígono (costa, cuantización): unidad con el centro de bbox más cercano
+    # outside every polygon (coastline, quantization): the unit whose bbox center is closest
     d = lambda u: ((u[2][0] + u[2][2]) / 2 - x) ** 2 + ((u[2][1] + u[2][3]) / 2 - y) ** 2
     return min(COUNTRY[c]["units"], key=d)[0]
 
@@ -122,7 +122,7 @@ a1name = {}
 for line in open(os.path.join(DL, "admin1Codes.txt"), encoding="utf-8"):
     code, name, ascii_, _ = line.rstrip("\n").split("\t")
     a1name[code] = {norm(name), norm(ascii_)}
-cities = defaultdict(lambda: defaultdict(list))  # iso2 -> nombre norm -> [(pop, lat, lon, admin1)]
+cities = defaultdict(lambda: defaultdict(list))  # iso2 -> normalized name -> [(pop, lat, lon, admin1)]
 want = {v for v in iso.values() if v}
 for line in open(os.path.join(DL, "cities1000.txt"), encoding="utf-8"):
     t = line.split("\t")
@@ -142,15 +142,15 @@ ALIAS = {"US": "United States", "USA": "United States", "UK": "United Kingdom", 
 
 
 def regions_for(c, parts):
-    """parts: trozos de un segmento de ubicación, sin el país."""
+    """parts: the pieces of one location segment, without the country."""
     C = COUNTRY[c]
     cc = iso.get(c)
     hints = [norm(p) for p in parts]
-    # 1) nombre de región explícito (de último a primero: "Ciudad, Región")
+    # 1) an explicit region name (last to first: "City, Region")
     for h in hints[::-1]:
         if h in C["names"] and len(C["names"][h]) == 1:
             return next(iter(C["names"][h]))
-    # 2) ciudad (primer trozo que sea ciudad), desempatando por región mencionada
+    # 2) a city (the first piece that is a city), breaking ties with a region mentioned after it
     for i, h in enumerate(hints):
         cand = cities[cc].get(h) if cc else None
         if cand:
@@ -158,7 +158,7 @@ def regions_for(c, parts):
             pick = [r for r in cand if a1name.get(r[3], set()) & rest] or cand
             pop, lat, lon, _ = max(pick)
             return locate(c, lon, lat)
-    # 2) nombre de región directamente
+    # 3) a region name directly
     for h in hints[::-1]:
         if h in C["names"] and len(C["names"][h]) == 1:
             return next(iter(C["names"][h]))
@@ -199,9 +199,9 @@ for b in bands:
 json.dump(band_regions, open(os.path.join(OUT, "band_regions.json"), "w"), ensure_ascii=False, separators=(",", ":"))
 
 
-# ---------- geometría de salida ----------
+# ---------- output geometry ----------
 def ring_out(r, exterior=True):
-    # d3-geo espera anillos exteriores en sentido horario (área de Gauss negativa) y huecos en antihorario
+    # d3-geo expects exterior rings clockwise (negative shoelace area) and holes counter-clockwise
     a = sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(r, r[1:] + r[:1]))
     if (a > 0) == exterior:
         r = r[::-1]
@@ -220,10 +220,10 @@ for c, C in COUNTRY.items():
                 for a, b2 in zip(ring, ring[1:]):
                     k = (a, b2) if a < b2 else (b2, a)
                     seg_regions[k].add(r); seg_count[k] += 1
-    # fronteras entre regiones distintas (las internas de una región agrupada desaparecen)
+    # borders between different regions (the inner ones of a grouped region disappear)
     lines = [[[a[0] / Q, a[1] / Q], [b2[0] / Q, b2[1] / Q]] for (a, b2), rs in seg_regions.items()
              if len(rs) > 1]
-    # unir segmentos consecutivos para aligerar
+    # join consecutive segments to make the file lighter
     merged = []
     for s in lines:
         if merged and merged[-1][-1] == s[0]:
@@ -235,9 +235,9 @@ for c, C in COUNTRY.items():
               open(os.path.join(OUT, "geo", f"{c}.json"), "w"), ensure_ascii=False, separators=(",", ":"))
 
 tot = [sum(v[0] for v in stats.values()), sum(v[1] for v in stats.values())]
-print("bandas con región:", tot[0], "/", tot[1], f"({tot[0] / tot[1]:.0%})")
+print("bands with a region:", tot[0], "/", tot[1], f"({tot[0] / tot[1]:.0%})")
 for c in ["United States", "Germany", "Brazil", "Italy", "United Kingdom", "France", "Canada", "Russia", "Spain", "Sweden",
           "Poland", "Finland", "Norway", "Mexico", "Japan", "Czechia"]:
     if c in stats:
-        print(f"  {c:16} {stats[c][0] / stats[c][1]:.0%}  regiones={len(COUNTRY[c]['regions'])}")
-print("países sin geometría regional:", sorted(KNOWN - set(COUNTRY)))
+        print(f"  {c:16} {stats[c][0] / stats[c][1]:.0%}  regions={len(COUNTRY[c]['regions'])}")
+print("countries without regional geometry:", sorted(KNOWN - set(COUNTRY)))
