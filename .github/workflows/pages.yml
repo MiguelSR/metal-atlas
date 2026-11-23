@@ -1,6 +1,7 @@
 # Publishes the site on GitHub Pages on every push to main.
 # It runs the same build as locally (map/make_netlify.py: site/ -> a static folder with a full HTML document)
-# and deploys that folder.
+# and deploys that folder. Build and deploy are separate jobs (GitHub's recommended layout): the deploy job only
+# starts once the uploaded artifact is registered.
 name: Publish site
 
 on:
@@ -18,11 +19,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - name: Build
@@ -31,5 +29,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: map/netlify
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
