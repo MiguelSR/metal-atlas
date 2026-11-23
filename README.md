@@ -2,7 +2,7 @@
 
 Mapa interactivo de las ~200.000 bandas de [Encyclopaedia Metallum (Metal Archives)](https://www.metal-archives.com), con un modo juego para adivinar bandas por su música.
 
-Es una web estática: un único `index.html` más ficheros JSON precalculados. No necesita servidor ni base de datos; se publica sola en **GitHub Pages** con cada commit a `main` (https://miguelsr.github.io/metal-atlas/).
+Es una web estática: un único `index.html` más ficheros JSON precalculados. No necesita servidor ni base de datos; se publica sola en **GitHub Pages** con cada commit a `main` (https://miguelsr.js.org/metal-atlas/).
 
 ---
 
@@ -194,7 +194,7 @@ cd ~/metal-archives
 git add -A && git commit -m "Actualizar datos" && git push
 ```
 
-GitHub Actions ejecuta `map/make_netlify.py` y publica el resultado en https://miguelsr.github.io/metal-atlas/ en uno o dos minutos. Para ver el progreso o los errores: pestaña **Actions** del repo, o `gh run list`.
+GitHub Actions ejecuta `map/make_netlify.py` y publica el resultado en https://miguelsr.js.org/metal-atlas/ en uno o dos minutos. Para ver el progreso o los errores: pestaña **Actions** del repo, o `gh run list`.
 
 `.gitignore` deja fuera del repo las descargas y cachés (unos 500 MB, regenerables con los scripts), los logs y `map/netlify/`. **Esas cachés solo existen en este Mac**: la verificación de iTunes (`scraper/itunes/`) costó unas 20 horas, así que conviene tener copia de seguridad de `~/metal-archives` y de `~/metal_archives_bands.json`.
 
