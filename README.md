@@ -344,6 +344,8 @@ The tests never touch the network: Metal Archives pages are reproduced as trimme
 
 ### Code conventions
 
+(`CLAUDE.md` adds the decisions behind the code, the owner's preferences and known pitfalls; keep it current.)
+
 - **One module per step**, each with a `main(argv)`; `__main__.py` maps command names to modules.
 - **Pure functions for the logic** (parsing, matching, scoring) and thin `main()` functions for input/output, so the logic is testable without files or network.
 - **Paths only in `paths.py`**, Metal Archives specifics only in `metal_archives.py`, HTTP only in `net.py`.
