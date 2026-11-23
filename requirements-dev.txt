@@ -1,0 +1,5 @@
+# development tools (the project itself only needs the standard library)
+black==26.10.1
+flake8==7.5.0
+pytest==9.2.0
+pre-commit==4.7.0

@@ -1,0 +1,15 @@
+[project]
+name = "metal-atlas"
+version = "1.0.0"
+description = "Scrapers and build steps behind Metal Atlas, a map of the bands in Metal Archives"
+readme = "README.md"
+requires-python = ">=3.15"
+dependencies = []  # standard library only (plus curl, and gh for the data release)
+
+[tool.black]
+line-length = 120
+target-version = ["py315"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

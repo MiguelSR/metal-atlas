@@ -1,7 +1,8 @@
 # Publishes the site on GitHub Pages: on every push to main, by hand, or called by the daily update (daily.yml).
-# The page (map/site/index.html) comes from git; its data files come from the `data` release (see data.py).
-# make_netlify.py turns map/site into a static folder with a full HTML document. Build and deploy are separate
-# jobs (GitHub's recommended layout): the deploy job only starts once the uploaded artifact is registered.
+# The page (map/site/index.html) comes from git; its data files come from the `data` release
+# (python -m metal_atlas data). `bundle` turns map/site into map/public, a static folder with a full HTML document.
+# Build and deploy are separate jobs (GitHub's recommended layout): the deploy job only starts once the uploaded
+# artifact is registered.
 name: Publish site
 
 on:
@@ -25,17 +26,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main                 # when called right after the daily update, include its commit
+          ref: main # when called right after the daily update, include its commit
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.15"
       - name: Get the site data (data release)
-        run: python3 data.py pull --site
+        run: python -m metal_atlas data pull --site
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Build
-        run: python3 map/make_netlify.py
+        run: python -m metal_atlas bundle
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: map/netlify
+          path: map/public
 
   deploy:
     needs: build

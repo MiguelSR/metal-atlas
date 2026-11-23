@@ -1,0 +1,8 @@
+[flake8]
+max-line-length = 120
+# E203 (whitespace before ':') and E701/E704 conflict with black's formatting
+extend-ignore = E203, E701, E704
+exclude = .git, .venv, __pycache__, map, scraper, dist
+per-file-ignores =
+    # long fixture strings copied from Metal Archives pages
+    tests/fixtures.py: E501

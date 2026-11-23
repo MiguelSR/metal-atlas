@@ -1,10 +1,10 @@
-# What goes in the repo: the code and the README. The data lives in the `data` release (see data.py);
-# everything below is generated, or a large local cache/download handled by data.py and the scripts.
+# What goes in the repo: the code, the tests and the README. The data lives in the `data` release
+# (python -m metal_atlas data); everything below is generated, or a large local cache/download.
 
 # generated publish folder (GitHub Actions builds it on every push)
-map/netlify/
+map/public/
 
-# the site's generated data and the packed data snapshots: they live in the `data` release (see data.py)
+# the site's generated data and the packed data snapshots: they live in the `data` release
 map/site/*.json
 !map/site/countries-50m.json
 map/site/c/
@@ -21,6 +21,10 @@ map/reviews_new/
 map/geo_dl/
 map/regions_out/
 map/reviews_by_band.json
+
+# development environment
+.venv/
+.pytest_cache/
 
 # logs, backups, system files
 *.log
