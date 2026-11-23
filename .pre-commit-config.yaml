@@ -1,5 +1,8 @@
 # Checks run before every commit (install once with: .venv/bin/pre-commit install).
 # The same checks run on GitHub on every push (.github/workflows/ci.yml).
+# Python: black, flake8, pytest. Front end (web/, needs `npm ci --prefix web` once): prettier (fixes formatting,
+# like black), then type check, ESLint and Vitest. The bundle (map/site/app.js) is not committed: it is built on
+# deploy (pages.yml) and locally with `npm run build --prefix web`.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -30,3 +33,18 @@ repos:
         additional_dependencies: ["pytest==9.2.0"]
         pass_filenames: false
         types: [python]
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier (web)
+        entry: npm --prefix web exec -- prettier --write --ignore-unknown
+        language: system
+        files: ^web/
+        exclude: ^web/package-lock\.json$
+      - id: web-checks
+        name: typecheck + eslint + vitest (web)
+        entry: npm --prefix web run typecheck-lint-test
+        language: system
+        files: ^web/
+        pass_filenames: false

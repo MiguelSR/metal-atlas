@@ -4,6 +4,8 @@ site/index.html has no <html>, <head> or <body>: it was first written for claude
 Static hosts serve files as they are, so the page gets wrapped in a full HTML document here. The data files are
 hard-linked, not copied (no extra disk space).
 
+The front end (app.js) must be built first: npm run build --prefix web.
+
 Usage: python3 -m metal_atlas bundle
 """
 
@@ -27,8 +29,19 @@ def wrap_document(page: str) -> str:
     )
 
 
+APP_SCRIPT = "app.js"  # the front end, compiled from web/ (TypeScript)
+
+
+class MissingAppScript(RuntimeError):
+    """map/site/app.js does not exist: the TypeScript front end was not built."""
+
+
 def bundle(site: Path, public: Path) -> int:
     """Rebuilds ``public`` from ``site``. Returns the number of files."""
+    if not (site / APP_SCRIPT).exists():
+        raise MissingAppScript(
+            f"{site / APP_SCRIPT} is missing: build the front end first (npm run build --prefix web)"
+        )
     shutil.rmtree(public, ignore_errors=True)
     shutil.copytree(site, public, copy_function=os.link, ignore=shutil.ignore_patterns("index.html", ".*"))
     page = (site / "index.html").read_text(encoding="utf-8")

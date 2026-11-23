@@ -4,6 +4,11 @@
 # generated publish folder (GitHub Actions builds it on every push)
 map/public/
 
+# the bundled front end (built from web/ by `npm run build`, in CI and locally)
+map/site/app.js
+map/site/app.js.map
+web/node_modules/
+
 # the site's generated data and the packed data snapshots: they live in the `data` release
 map/site/*.json
 !map/site/countries-50m.json

@@ -4,7 +4,7 @@ import pytest
 
 from metal_atlas import __main__ as cli
 from metal_atlas import net
-from metal_atlas.bundle import bundle, wrap_document
+from metal_atlas.bundle import MissingAppScript, bundle, wrap_document
 from metal_atlas.data import public_records
 from metal_atlas.jsonio import read_json, write_json
 
@@ -28,7 +28,10 @@ def test_bundle_copies_data_and_wraps_the_page(tmp_path):
     (site / "c").mkdir(parents=True)
     (site / "c" / "0.json").write_text("[]")
     (site / "index.html").write_text('<div class="app"></div>')
-    assert bundle(site, public) == 2
+    with pytest.raises(MissingAppScript):
+        bundle(site, public)
+    (site / "app.js").write_text("")
+    assert bundle(site, public) == 3
     assert (public / "index.html").read_text().startswith("<!doctype html>")
 
 

@@ -1,6 +1,7 @@
 # Publishes the site on GitHub Pages: on every push to main, by hand, or called by the daily update (daily.yml).
 # The page (map/site/index.html) comes from git; its data files come from the `data` release
-# (python -m metal_atlas data). `bundle` turns map/site into map/public, a static folder with a full HTML document.
+# (python -m metal_atlas data), and app.js is compiled from web/ (TypeScript). `bundle` turns map/site into map/public,
+# a static folder with a full HTML document.
 # Build and deploy are separate jobs (GitHub's recommended layout): the deploy job only starts once the uploaded
 # artifact is registered.
 name: Publish site
@@ -30,11 +31,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.15"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - name: Get the site data (data release)
         run: python -m metal_atlas data pull --site
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Build
+      - name: Build the front end (TypeScript -> map/site/app.js)
+        run: npm ci --prefix web && npm run build --prefix web
+      - name: Build the site
         run: python -m metal_atlas bundle
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -6,7 +6,7 @@ Context for working on Metal Atlas from scratch. **README.md is the reference** 
 
 ## The project in one paragraph
 
-Static site (https://miguelsr.js.org/metal-atlas/, repo `MiguelSR/metal-atlas`, public) with a world map of the ~200,000 bands in Metal Archives (MA) and a "name that band" game with 30 s Apple Music previews. Python package `metal_atlas/` scrapes MA and iTunes and builds JSON; `map/site/index.html` is the whole front end (vanilla JS + d3, no build step). GitHub Actions updates the data daily and publishes on GitHub Pages. Data lives in the `data` release, not in git.
+Static site (https://miguelsr.js.org/metal-atlas/, repo `MiguelSR/metal-atlas`, public) with a world map of the ~200,000 bands in Metal Archives (MA) and a "name that band" game with 30 s Apple Music previews. Python package `metal_atlas/` scrapes MA and iTunes and builds JSON; the front end is TypeScript in `web/`, bundled by esbuild into `map/site/app.js` and loaded by `map/site/index.html` (HTML + CSS). GitHub Actions updates the data daily and publishes on GitHub Pages. Data lives in the `data` release, not in git.
 
 ## Working with the owner
 
@@ -55,20 +55,27 @@ Static site (https://miguelsr.js.org/metal-atlas/, repo `MiguelSR/metal-atlas`, 
 - Python **3.15** (owner's explicit choice). Standard library only at runtime; dev tools in `requirements-dev.txt`.
 - One module per step with `main(argv)`; pure functions for logic; paths only in `paths.py`; MA specifics only in `metal_archives.py`; HTTP only in `net.py`; atomic JSON writes.
 - black (line length 120), flake8, pytest; pre-commit hook + `ci.yml`. JSON files are excluded from the end-of-file fixer (the bot commits generated JSON).
+- **Front end in TypeScript** (owner's request, 2026-11-24): strict `tsc` with `noUncheckedIndexedAccess`, ESLint (typescript-eslint strict + stylistic, type-aware), Prettier, Vitest. `no-non-null-assertion` is off on purpose: `!` marks array indices known to be valid. Pure logic in its own modules, views as classes, wired in `main.ts`, shared state in `AppState`.
+- **TypeScript 6, not 7**: typescript-eslint doesn't support TS 7 yet, so npm resolved 6.0.3. Upgrade when it does.
+- **d3 and topojson come from npm** (only the modules used: d3-geo, d3-selection, d3-zoom, d3-transition, topojson-client), bundled by esbuild, instead of the CDN. app.js is ~140 KB minified, less than the CDN files were.
+- **The compiled `app.js` is not committed** (decided when moving to TS): it is built on deploy (`pages.yml`), in CI and locally (`npm run build --prefix web`). `bundle` refuses to run without it. Pre-commit runs Prettier (fixing) and tsc + ESLint + Vitest on `web/` changes.
+- npm 11 blocks dependency install scripts unless listed in `allowScripts` (`web/package.json`); esbuild is approved for its exact version, so upgrading it needs `npm install-scripts approve esbuild`.
 
 ## Gotchas
 
 - **CSS class collisions in index.html**: the map popup uses `.pop`, and `body.game-on .pop { display: none }` hides it in game mode. A game element once used class `pop` for an animation and vanished (the "reveal clue shows nothing" bug). Check existing selectors before naming classes.
-- index.html's main script declares `t` (translation function): don't name locals `t` (a "Cannot declare a let variable twice" bug came from this).
+- `t` is the translation function everywhere in the front end; don't shadow it with locals named `t`.
+- **Headless Chrome doesn't advance d3 transitions** under `--virtual-time-budget`: the zoom buttons (animated) never reach region mode in tests. Zoom with `WheelEvent`s on the SVG instead (d3 applies wheel zoom without animation). Not a bug in the site.
+- Images with fallbacks in the game don't use inline `onerror`: `GameView` listens to `error` events (capture) and uses `data-fallback`.
 - `make_netlify.py`/`map/netlify` and the scripts in `map/*.py`, `scraper/*.py` no longer exist (replaced by `metal_atlas/`); old notes may mention them.
 - The daily job and a local `data push` can overwrite each other: don't push data while the job runs.
 - `gh run watch` on a just-triggered run: wait a few seconds for it to appear.
 
 ## Checking changes
 
-- `pre-commit run --all-files` (black, flake8, pytest). Tests must not use the network.
+- `pre-commit run --all-files` (Python and front-end checks). Tests must not use the network (front end: fake `fetch`).
 - **Refactors of the build steps**: generate outputs before and after (`regions`, `build`, `game`, `bundle`) and diff the files (`diff -rq`, `cmp`); explain every difference.
-- **Front end**: there is no test suite. Check behavior in headless Chrome: serve `map/public` with `python -m http.server`, inject a test script into a copy of index.html that drives the UI (click buttons, set inputs) and writes a log into a `<pre id="__out">`, then run `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --virtual-time-budget=60000 --dump-dom URL` and read the log. Extract the main `<script>` and syntax-check it when editing JS by hand.
+- **Front end**: Vitest covers the logic; the views need a browser. Build (`npm run build --prefix web`, `python -m metal_atlas bundle`), serve `map/public` with `python -m http.server`, inject a test script into a copy of index.html that drives the UI (click buttons, set inputs, `WheelEvent` for zoom) and writes a log into a `<pre id="__out">`, then run `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --window-size=1400,900 --virtual-time-budget=120000 --dump-dom URL` and read the log. When porting or refactoring, run the same script against the previous build and compare the logs (done for the JS -> TS port: country card links, ▶ for the three "Nevermore", band search, legend focus, region mode and card, 10 game rounds, final score).
 - **Pipeline end to end**: `gh workflow run daily.yml`, then check the run log ("dataset: +N new…", "levels: […]") and the site.
 
 ## Open ideas (not requested yet)

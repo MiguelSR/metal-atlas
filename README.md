@@ -4,7 +4,7 @@ An interactive map of the ~200,000 bands in [Encyclopaedia Metallum (Metal Archi
 
 **Live site:** https://miguelsr.js.org/metal-atlas/
 
-It is a static site: a single `index.html` plus precomputed JSON files. No server and no database. It is published on **GitHub Pages**, and **a GitHub Actions job updates the data from Metal Archives every day** (see [Automatic daily update](#automatic-daily-update)).
+It is a static site: `index.html`, a TypeScript front end compiled into `app.js`, and precomputed JSON files. No server and no database. It is published on **GitHub Pages**, and **a GitHub Actions job updates the data from Metal Archives every day** (see [Automatic daily update](#automatic-daily-update)).
 
 ---
 
@@ -105,9 +105,23 @@ The interface is in **English and Spanish**. It follows the browser's language a
 │   ├── data.py                    pull / push the data from / to the `data` release
 │   └── probe.py                   try advanced-search queries
 ├── tests/                       <- pytest suite (no network: fixtures with the structure of real pages)
+├── web/                         <- the front end (TypeScript), compiled into map/site/app.js
+│   ├── package.json               dependencies (d3 modules, topojson) and scripts (build, check…)
+│   ├── tsconfig.json, eslint.config.js, .prettierrc.json, vitest.config.ts
+│   ├── src/
+│   │   ├── main.ts                  entry point: loads the data and wires everything
+│   │   ├── data.ts                  types of the JSON files, loaders
+│   │   ├── i18n.ts                  English / Spanish texts
+│   │   ├── state.ts, stats.ts       shared state: countries, regions, filters and the counts they give
+│   │   ├── countries.ts, format.ts, search-links.ts, icons.ts
+│   │   ├── itunes.ts, player.ts     previews (verified or live search) and the map's ▶ player
+│   │   ├── map/                     world map (d3), legend, country/region card, band search, header controls
+│   │   └── game/                    rules (pure), clues, sound check, the game view
+│   └── test/                      Vitest suite
 ├── map/                         <- site and map data
 │   ├── site/                      the website: index.html (in git) + generated JSON (in the data release)
-│   │   ├── index.html               the whole app: HTML + CSS + JS
+│   │   ├── index.html               the page: HTML + CSS (loads app.js)
+│   │   ├── app.js                   the front end, compiled from web/ (not in git)
 │   │   ├── index.json               per-country summary: genres × years
 │   │   ├── bands.json               index of every band, sorted by relevance
 │   │   ├── c/<n>.json               bands of each country
@@ -168,6 +182,8 @@ Steps 1–3, 6 and 7 are only needed once. After that, `update` keeps the data c
 
 Everything runs as `python -m metal_atlas <command>` from the repository root. It needs **Python 3.15** and `curl`, nothing else (standard library only); `data` also needs the GitHub CLI (`gh`). Run it without a command for the list.
 
+The front end needs **Node 26**: `npm run build --prefix web` (compile `map/site/app.js`), `npm run watch --prefix web` (recompile on every change), `npm run check --prefix web` (format, types, lint, tests).
+
 ### Everyday use
 
 | Command | Purpose |
@@ -195,7 +211,7 @@ Everything runs as `python -m metal_atlas <command>` from the repository root. I
 | `members [N=6000] [threads=3]` | | Skips bands already downloaded, so re-running only fetches the missing ones. |
 | `verify [N=6000] [threads=2]` | `ITUNES_GAP` env var (seconds between iTunes calls, default 6) | Skips bands already verified. On a 403 from iTunes it pauses 15–30 min. |
 | `game [--mixed]` | | Default: **verified bands only**. `--mixed`: unverified bands too, with live iTunes search. |
-| `bundle` | | |
+| `bundle` | | Needs `map/site/app.js` (`npm run build --prefix web`); fails with a hint otherwise. |
 | `update [--dry-run] [--since YYYY-MM-DD]` | | See [Updating the data](#updating-the-data). |
 | `data pull [--site] \| push \| pack` | `--site`: only the site data | See [Where the data lives](#where-the-data-lives). |
 
@@ -301,10 +317,18 @@ python -m metal_atlas game && python -m metal_atlas data push
 
 ### Changing texts, colors or behavior
 
-Everything is in `map/site/index.html`. To preview locally: `python -m metal_atlas data pull --site` (once), `python -m metal_atlas bundle`, and serve `map/public` (e.g. `python -m http.server -d map/public`). Then commit and push.
+The page structure and styles are in `map/site/index.html`; the behavior is in `web/src/` (TypeScript). To preview locally:
 
-- **Texts:** the `TX` dictionary (keys `en` and `es`) near the top of the script, used through `t("key", …)`.
-- **Game levels:** `LEVELS` in `metal_atlas/game.py`; their names in `TX.*.levels`.
+```bash
+python -m metal_atlas data pull --site    # once: the site data
+npm run build --prefix web                # or `npm run watch --prefix web` to rebuild on every change
+python -m metal_atlas bundle
+python -m http.server -d map/public       # http://localhost:8000
+```
+
+- **Texts:** `web/src/i18n.ts`, one function per language (`english`, `spanish`); the Spanish one must have every key (the type checker enforces it). Used through `t("key", …)`.
+- **Colors:** CSS variables at the top of `index.html` (`--g-black`…); the genres that get one are in `web/src/map/colors.ts`.
+- **Game levels:** `LEVELS` in `metal_atlas/game.py`; their names in `levels` in `i18n.ts`.
 
 ---
 
@@ -316,10 +340,13 @@ Everything is in `map/site/index.html`. To preview locally: `python -m metal_atl
 cd ~/metal-archives
 python3.15 -m venv .venv                       # Python 3.15 (brew install python@3.15)
 .venv/bin/pip install -r requirements-dev.txt  # black, flake8, pytest, pre-commit
+npm ci --prefix web                            # Node 26 (brew install node): TypeScript, esbuild, ESLint, Vitest…
 .venv/bin/pre-commit install                   # run the checks before every commit
 ```
 
 Activate the environment (`source .venv/bin/activate`) to use `python`, `pytest`… directly.
+
+npm only runs the install scripts listed in `allowScripts` (`web/package.json`): esbuild's, which downloads its binary, is approved for its exact version. After upgrading esbuild: `npm install-scripts approve esbuild --prefix web`.
 
 ### Checks
 
@@ -328,19 +355,29 @@ Activate the environment (`source .venv/bin/activate`) to use `python`, `pytest`
 | **black** | formatting | `pyproject.toml` (line length 120) |
 | **flake8** | lint | `.flake8` (same line length; ignores the rules black contradicts) |
 | **pytest** | tests in `tests/` | `pyproject.toml` |
+| **Prettier** | front-end formatting | `web/.prettierrc.json` (line length 120) |
+| **tsc** | type check (strict, `noUncheckedIndexedAccess`) | `web/tsconfig.json` |
+| **ESLint** | front-end lint (typescript-eslint, strict + stylistic, type-aware) | `web/eslint.config.js` |
+| **Vitest** | tests in `web/test/` | `web/vitest.config.ts` |
 | pre-commit-hooks | trailing spaces, final newlines, YAML, files over 1 MB | `.pre-commit-config.yaml` |
 
-They run **before every commit** (the pre-commit hook: a failing check stops the commit; black fixes formatting by itself, so re-`git add` and commit again) and **on GitHub on every push** (`ci.yml`, the "Checks" workflow). By hand:
+They run **before every commit** (the pre-commit hook: a failing check stops the commit; black and Prettier fix formatting by themselves, so re-`git add` and commit again) and **on GitHub on every push** (`ci.yml`, the "Checks" workflow, which also builds the front end). By hand:
 
 ```bash
-pre-commit run --all-files   # every check
-pytest                       # only the tests
-black metal_atlas tests      # format
+pre-commit run --all-files     # every check
+pytest                         # Python tests
+black metal_atlas tests        # format Python
+npm run check --prefix web     # front end: prettier --check, tsc, eslint, vitest
+npm run format --prefix web    # format the front end
 ```
+
+**The compiled front end (`map/site/app.js`) is not committed**: generated code in git means huge diffs and a risk of publishing a stale build. It is compiled where it is needed: on every deploy (`pages.yml`), in CI, and locally with `npm run build --prefix web`.
 
 ### Tests
 
 The tests never touch the network: Metal Archives pages are reproduced as trimmed fragments with the same structure (`tests/fixtures.py`), and HTTP calls are replaced by fakes. They cover the parsers (band pages, lineups, discographies, review and change lists), genre and location parsing, the relevance score, region placement, iTunes matching (namesakes, self-titled albums), track selection for the game, the update's date logic and the data release packing.
+
+The front-end tests (`web/test/`, Vitest) cover the logic without the DOM: answer checking (typos, "the", accents), name masking, clue order, album clue and verdicts; counts under year and name filters; genre search; verified previews vs live iTunes search (namesakes, artists taken by verified bands) with a fake `fetch`; Metal Archives search links; clue HTML; the legend; translations (both languages complete). The views themselves (map, card, game screens) are checked in a headless browser (see `CLAUDE.md`).
 
 ### Code conventions
 
@@ -350,6 +387,7 @@ The tests never touch the network: Metal Archives pages are reproduced as trimme
 - **Pure functions for the logic** (parsing, matching, scoring) and thin `main()` functions for input/output, so the logic is testable without files or network.
 - **Paths only in `paths.py`**, Metal Archives specifics only in `metal_archives.py`, HTTP only in `net.py`.
 - Output files are written atomically (`jsonio.write_json`), so an interrupted run never leaves half a file.
+- **Front end:** pure logic in its own modules (`stats.ts`, `game/rules.ts`, `itunes.ts`, `search-links.ts`…) and views as classes that own one part of the page (`WorldMap`, `Card`, `Legend`, `BandSearch`, `PreviewPlayer`, `GameView`), wired in `main.ts`. Shared state lives in `AppState`. HTML is built with template strings and every value goes through `esc()`.
 
 ---
 
