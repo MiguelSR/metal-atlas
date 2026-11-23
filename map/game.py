@@ -14,7 +14,8 @@ Usage: python3 game.py [--mixed]   (after build.py)
   default: only bands whose songs were verified and stored (the page never calls the iTunes API)
   --mixed: also bands without verified songs; the page then searches iTunes live for them (may hit a namesake band)
 """
-import json, os, re, sys
+import json, os, re, sys, unicodedata
+from collections import Counter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.join(HERE, "site")
@@ -35,15 +36,15 @@ AUDIO = "https://audio-ssl.itunes.apple.com/itunes-assets/"
 ART = re.compile(r"^https://is(\d)-ssl\.mzstatic\.com/image/thumb/(.+)/100x100bb\.jpg$")
 
 
-def pick(tracks):
-    """Up to TRACKS songs, round-robin across albums, with the common URL parts stripped (the page adds them back)."""
+def pick(tracks, n=TRACKS):
+    """Up to n songs, round-robin across albums, with the common URL parts stripped (the page adds them back)."""
     by_album = {}
     for t in tracks:
         by_album.setdefault(t[2], []).append(t)
     out, queues = [], list(by_album.values())
-    while len(out) < TRACKS and any(queues):
+    while len(out) < n and any(queues):
         for q in queues:
-            if q and len(out) < TRACKS:
+            if q and len(out) < n:
                 out.append(q.pop(0))
     short = []
     for url, title, album, art in out:
@@ -81,4 +82,25 @@ for a, b in LEVELS:
     levels.append(lv)
 
 json.dump({"levels": levels, "b": rows}, open(os.path.join(SITE, "game.json"), "w"), ensure_ascii=False, separators=(",", ":"))
+# previews.json, for the map's play buttons (loaded on the first click): verified songs by band id, the ids with no
+# preview (verified as not on iTunes, or unverified with a shared name: see below) and the iTunes artist ids already
+# taken by verified bands (a live search for a band outside the top 6000 skips them: e.g. the other "Nevermore" bands)
+pv, none, taken = {}, [], set()
+for bid in BI["id"][:6000]:
+    it = load("itunes", bid)
+    if not it or it.get("v") != 3:
+        continue
+    if it.get("t"):
+        pv[bid] = pick(it["t"], 3)
+        taken.add(it["a"])
+    else:
+        none.append(bid)
+# unverified bands whose name is shared with another Metal Archives band: a live search by name can't tell them apart
+# (a quarter of all bands), so they get no preview rather than someone else's songs
+fold = lambda x: "".join(ch for ch in unicodedata.normalize("NFD", x) if not unicodedata.combining(ch)).lower()
+same_name = Counter(fold(x) for x in BI["n"])
+dup = [bid for bid, x in zip(BI["id"], BI["n"]) if same_name[fold(x)] > 1 and bid not in pv and bid not in none]
+json.dump({"t": pv, "none": none + dup, "taken": sorted(taken)}, open(os.path.join(SITE, "previews.json"), "w"),
+          ensure_ascii=False, separators=(",", ":"))
+print("previews.json:", len(pv), "bands with songs,", len(none), "not on iTunes,", len(dup), "unverified with a shared name")
 print("levels:", [len(l) for l in levels], "| not downloaded yet:", pending, "| without verified songs:", unverified, "(excluded)" if VERIFIED_ONLY else "(searched live)")

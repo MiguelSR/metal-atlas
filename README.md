@@ -111,6 +111,7 @@ The interface is in **English and Spanish**. It follows the browser's language a
     │   ├── c/<n>.json               bands of each country
     │   ├── r/<n>.json               regions of each country (geometry + summaries)
     │   ├── game.json                game bands, with their clues and previews
+    │   ├── previews.json            verified previews for the map's ▶ buttons
     │   └── countries-50m.json       world map (TopoJSON)
     └── netlify/                   local copy of what gets published (generated; not in the repo)
 ```
@@ -334,7 +335,10 @@ Used to sort the lists and to build the game levels. Computed in `build.py`:
 They come from the **iTunes Search API**: free, no key, and callable from the browser. Every song has a 30-second m4a at `audio-ssl.itunes.apple.com`. There are two ways to get one:
 
 - **Stored preview** (verified bands): the audio URL is already in `game.json`, so the browser never calls the iTunes API. It is always the right band. The Network tab only shows an opaque URL, and the file carries no artist or title.
-- **Live search** (the ▶ in map mode): the browser looks the artist up by name on iTunes and takes their songs. With shared names (there are 40+ "Hydra" on iTunes) another band may play.
+- **Map ▶ buttons** use `previews.json` (built by `game.py`, loaded on the first click), by band id:
+  - **verified bands** (~5,100): their stored songs;
+  - **no preview** for bands verified as not on iTunes, and for unverified bands whose name is shared with another Metal Archives band (about a quarter of all bands, e.g. the other two "Nevermore"): a search by name cannot tell them apart;
+  - **live search** for the remaining unverified bands (unique names outside the top 6,000): the browser looks the artist up by name on iTunes, skipping the iTunes artists already linked to verified bands. A non-metal namesake on iTunes can still slip through.
 
 **The game only uses verified bands** (5,099 of 6,000 as of 2026-11-23), so the right band always plays and the browser never calls the iTunes API during a game. The remaining ~900 are not on iTunes with a matching discography, almost always because they are not on Apple Music. `game.py --mixed` would add them with live search; it was dropped because it led to "No music" and namesakes.
 
@@ -360,7 +364,7 @@ They come from the **iTunes Search API**: free, no key, and callable from the br
   - **It also affects your browser**, which shares the IP: while verifying, the map's ▶ may fail at home. Site visitors are not affected.
   - `verify.py` makes one call every 6 s and pauses 15–30 min on a 403.
   - If more speed were ever needed, the official route is the Apple Music API, which requires an Apple Developer account.
-- **Live search (map ▶):** a namesake band may play, or no music may be found.
+- **Live search (map ▶, unverified bands with a unique name):** an iTunes artist with the same name that is not the band may still play.
 - **Review passages can mention band members** (e.g. a singer's name). The filter only hides the band and album names.
 - **`game.json` is readable:** a curious player could look up the URL of the song that is playing. It was obfuscated once and the obfuscation was removed on purpose.
 - **Duplicate reviews in the initial scrape:** the full review list has 137,809 rows but 135,553 distinct reviews (rows probably repeated while paginating). Some bands' review counts are inflated by about 1.6 %; the effect on relevance is minimal.

@@ -559,16 +559,23 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
   const P = { audio: new Audio(), key: null, name: "", tracks: [], i: 0, busy: null, cache: new Map() };
   P.audio.preload = "none"; P.audio.volume = 0.8;
   const npEl = document.getElementById("np");
-  const pkey = (name, gi) => name + "\u0001" + (gi ?? "");
-  function listen(name, gi) {
-    const k = pkey(name, gi), c = P.cache.get(k);
+  const pkey = (name, gi, id) => id != null && id !== "" ? "id" + id : name + "\u0001" + (gi ?? "");
+  // verified previews (game.py -> previews.json), loaded on the first play click; URLs are stored shortened
+  const AUDIO_URL = u => /^https?:/.test(u) ? u : "https://audio-ssl.itunes.apple.com/itunes-assets/" + u;
+  const COVER_URL = (a, size) => { const m = /^(\d)\|(.+)$/.exec(a || ""); return m ? `https://is${m[1]}-ssl.mzstatic.com/image/thumb/${m[2]}/${size}x${size}bb.jpg` : (a || "").replace(/100x100bb/, `${size}x${size}bb`); };
+  let PV = null;
+  const loadPV = () => PV ||= fetch("previews.json").then(r => r.json())
+    .then(d => ({ t: d.t, none: new Set(d.none), taken: new Set(d.taken) }))
+    .catch(e => { PV = null; throw e; });
+  function listen(name, gi, id) {
+    const k = pkey(name, gi, id), c = P.cache.get(k);
     const st = P.busy === k ? "busy" : P.key === k && !P.audio.paused ? "on" : c && !c.length ? "none" : "";
     const ic = st === "busy" ? IC.spin : st === "on" ? IC.pause : IC.play;
     const tl = st === "none" ? t("plNone") : st === "on" ? t("plPause") : t("plPlay");
-    return `<button class="pl ${st}" data-n="${esc(name)}" data-g="${gi ?? ""}" title="${tl}" aria-label="${tl}: ${esc(name)}">${ic}</button>`;
+    return `<button class="pl ${st}" data-n="${esc(name)}" data-g="${gi ?? ""}" data-id="${id ?? ""}" title="${tl}" aria-label="${tl}: ${esc(name)}">${ic}</button>`;
   }
   function syncButtons() {
-    document.querySelectorAll(".pl").forEach(b => { b.outerHTML = listen(b.dataset.n, b.dataset.g === "" ? null : +b.dataset.g); });
+    document.querySelectorAll(".pl").forEach(b => { b.outerHTML = listen(b.dataset.n, b.dataset.g === "" ? null : +b.dataset.g, b.dataset.id || null); });
   }
   const GOOD = /metal|grind|hardcore|punk|rock|industrial|alternative|goth|noise|doom|sludge|ambient|folk|experimental/i;
   async function itunes(params) {
@@ -576,9 +583,11 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
     if (!r.ok) throw new Error(r.status);
     return (await r.json()).results || [];
   }
-  async function findTracks(name) {
+  // live search by name, only for bands that were never verified (outside the top 6000). `taken`: iTunes artists that
+  // belong to verified bands, so a namesake (e.g. another "Nevermore") never plays the famous band's songs
+  async function findTracks(name, taken = null) {
     const arts = await itunes("search?entity=musicArtist&limit=50&term=" + encodeURIComponent(name));
-    const same = arts.filter(a => fold(a.artistName) === fold(name));
+    const same = arts.filter(a => fold(a.artistName) === fold(name) && !(taken && taken.has(a.artistId)));
     const rank = a => /metal/i.test(a.primaryGenreName || "") ? 2 : GOOD.test(a.primaryGenreName || "") ? 1 : 0;
     const pick = same.filter(a => rank(a) > 0).sort((a, b) => rank(b) - rank(a))[0];
     if (!pick) return [];
@@ -608,15 +617,24 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
     renderNp();
   }
   function stopPlayer() { P.audio.pause(); P.audio.removeAttribute("src"); P.key = null; P.tracks = []; npEl.hidden = true; syncButtons(); }
-  async function toggle(name, gi) {
-    const k = pkey(name, gi);
+  async function tracksFor(name, id) {
+    const pv = await loadPV().catch(() => null);
+    if (pv && id != null && id !== "") {
+      const v = pv.t[id];
+      if (v) return v.map(([u, title, album, art]) => ({ url: AUDIO_URL(u), title, album, art: COVER_URL(art, 100) }));
+      if (pv.none.has(+id)) return [];        // verified: not on iTunes
+    }
+    return findTracks(name, pv ? pv.taken : null);
+  }
+  async function toggle(name, gi, id) {
+    const k = pkey(name, gi, id);
     if (P.key === k && P.tracks.length) { P.audio.paused ? P.audio.play() : P.audio.pause(); return; }
     if (P.busy) return;
     P.audio.pause(); P.key = k; P.name = name; P.tracks = [];
     let tr = P.cache.get(k);
     if (!tr) {
       P.busy = k; syncButtons();
-      try { tr = await findTracks(name); P.cache.set(k, tr); }
+      try { tr = await tracksFor(name, id); P.cache.set(k, tr); }
       catch (e) { tr = null; }
       P.busy = null;
     }
@@ -629,7 +647,7 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
     const b = e.target.closest && e.target.closest(".pl");
     if (!b || b.classList.contains("none")) return;
     e.preventDefault(); e.stopPropagation();
-    toggle(b.dataset.n, b.dataset.g === "" ? null : +b.dataset.g);
+    toggle(b.dataset.n, b.dataset.g === "" ? null : +b.dataset.g, b.dataset.id || null);
   }, true);
   npEl.addEventListener("click", e => {
     const a = e.target.closest("[data-a]"); if (!a) return;
@@ -968,7 +986,7 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
         const rv = rc ? `<span class="chip rv">${t("reviews", rc, avg)}</span>` : "";
         const yr = year ? `<span class="chip">${t("formedY", year)}</span>` : "";
         return `<div class="b"><span class="rk">${j + 1}</span><div style="min-width:0">
-          <div class="nmr"><a href="${maUrl(id, bname, slug)}" target="_blank" rel="noopener">${esc(bname)}</a>${listen(bname, gis[0])}</div>
+          <div class="nmr"><a href="${maUrl(id, bname, slug)}" target="_blank" rel="noopener">${esc(bname)}</a>${listen(bname, gis[0], id)}</div>
           <div class="ln">${esc(genre)}${label ? " · " + esc(label) : ""}</div>
           <div class="chips">${yr}${stc}${rv}</div></div></div>`;
       }).join("") : `<div class="empty">${t("noGenreBands")}</div>`}</div>
@@ -1020,7 +1038,7 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
     results.innerHTML = head + (list.length ? `<ol>${list.slice(0, RMAX).map(i => {
       const ctry = BI.l[i].map(([ci]) => IDX.countries[ci].name);
       const gs = BI.g[i].slice(0, 2).map(gi => GEN[gi]).join(", ");
-      return `<li><div class="nmr"><a href="${maUrl(BI.id[i], BI.n[i], BI.s[i])}" target="_blank" rel="noopener">${hl(BI.n[i])}</a>${listen(BI.n[i], BI.g[i][0])}</div>
+      return `<li><div class="nmr"><a href="${maUrl(BI.id[i], BI.n[i], BI.s[i])}" target="_blank" rel="noopener">${hl(BI.n[i])}</a>${listen(BI.n[i], BI.g[i][0], BI.id[i])}</div>
         <div class="ln">${ctry.map(c => `<button class="cbtn" data-c="${esc(c)}">${esc(cn(c))}</button>`).join(" / ")}${BI.y[i] ? " · " + BI.y[i] : ""}${gs ? " · " + esc(gs) : ""}</div></li>`;
     }).join("")}</ol>${list.length > RMAX ? `<div class="more">${t("showingMax", RMAX)}</div>` : ""}`
       : `<div class="more">${t("noNames", yearsText())}</div>`);
@@ -1116,9 +1134,7 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
     const big = a => (a || "").replace(/100x100bb/, "600x600bb");
     const baked = Array.isArray(b[13]) ? b[13] : [];
     // game.py strips the common URL parts to keep game.json small: put them back
-    const audio = u => /^https?:/.test(u) ? u : "https://audio-ssl.itunes.apple.com/itunes-assets/" + u;
-    const cover = a => { const m = /^(\d)\|(.+)$/.exec(a || ""); return m ? `https://is${m[1]}-ssl.mzstatic.com/image/thumb/${m[2]}/600x600bb.jpg` : big(a); };
-    if (baked.length) return baked.map(([url, title, album, art]) => ({ url: audio(url), title, album, art: cover(art) }));
+    if (baked.length) return baked.map(([url, title, album, art]) => ({ url: AUDIO_URL(url), title, album, art: COVER_URL(art, 600) }));
     // not verified yet: search iTunes by name (may occasionally pick a namesake band)
     return (await findTracks(b[1])).map(t => ({ ...t, art: big(t.art) }));
   }
