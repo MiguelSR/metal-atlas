@@ -21,6 +21,8 @@ export function describeQuery(query: Query, t: Translate, countryName: (country:
   else if (to) chips.push(t("yrTo", to));
   if (query.themes) chips.push(`${field.themes}: ${query.themes.join(" + ")}`);
   if (query.label) chips.push(`${field.label}: ${query.label}`);
+  if (query.unsigned) chips.push(t("oUnsigned"));
+  if (query.name) chips.push(t("oName")[query.nameMatch ?? "exact"](query.name));
   if (query.member) chips.push(`${field.member}: ${query.member}`);
   if (query.role) chips.push(`${field.role}: ${query.role}`);
   if (query.album) chips.push(`${field.album}: ${query.album}`);

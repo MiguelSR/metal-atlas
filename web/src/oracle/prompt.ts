@@ -18,7 +18,8 @@ Fields (omit those not needed):
 - status: "Active", "Split-up", "On hold", "Changed name", "Unknown", "Disputed".
 - formedFrom, formedTo: formation years (a decade like the 80s is 1980 to 1989).
 - themes: words of the lyrical themes, in English, any of which may match (e.g. ["war"], ["satan"], ["tolkien"], ["vikings"]).
-- label: record label name.
+- label: record label name. unsigned: true for bands without a label ("unsigned", "sin sello", "independent").
+- name, nameMatch: a band name to search, "exact" ("named Slayer"), "prefix" ("starting with Killer"), "contains", "suffix".
 - member: a musician's name. role: instrument in English ("guitars", "bass", "drums", "vocals", "keyboards").
 - album: words of an album title. albumType: "Full-length", "EP", "Demo", "Single", "Live album", "Compilation", "Split". releasedFrom, releasedTo: release years.
 - groupBy: "country", "genre", "label", "year", "decade", "location", "status".

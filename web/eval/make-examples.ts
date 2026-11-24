@@ -88,6 +88,46 @@ const THEMES: [string, string][] = [
   ["la locura", "madness"],
 ];
 
+/** Common words in band names, for the name questions */
+const NAME_WORDS = [
+  "Killer",
+  "Death",
+  "Dark",
+  "Blood",
+  "Black",
+  "Iron",
+  "Night",
+  "Hell",
+  "Doom",
+  "Storm",
+  "Steel",
+  "Fire",
+  "Wolf",
+  "Dragon",
+  "Grave",
+  "Witch",
+  "Satan",
+  "Demon",
+  "Metal",
+  "Thunder",
+  "Shadow",
+  "Raven",
+  "Chaos",
+  "Blade",
+  "Cross",
+  "Sabbath",
+  "Venom",
+  "Tyrant",
+  "Warlock",
+  "Hammer",
+  "Crypt",
+  "Necro",
+  "Cult",
+  "Beast",
+  "Reaper",
+  "Viper",
+  "Kaos",
+];
 const DECADES = [1970, 1980, 1990, 2000, 2010];
 const ROLES: [es: string, en: string, role: string, needle: string][] = [
   ["¿Quién toca la batería en", "Who plays drums in", "drums", "drum"],
@@ -120,6 +160,8 @@ function satisfying(answer: Answer, query: Query): boolean {
   switch (answer.kind) {
     case "bands":
     case "count":
+      // a band named exactly so is often unique
+      if (query.nameMatch === "exact") return answer.total >= 1;
       return answer.total >= 3 && answer.rows.length >= Math.min(3, query.limit ?? 3);
     case "top":
       return answer.groups.length >= 3;
@@ -235,6 +277,46 @@ export function makeExamples(
       country,
       sort: "oldest",
     });
+    const word = pick(NAME_WORDS);
+    add("unsigned", `Las bandas de ${gEs} sin sello con más reseñas`, `The most reviewed unsigned ${gEn} bands`, {
+      intent: "bands",
+      genre,
+      unsigned: true,
+      sort: "reviews",
+    });
+    add("named", `¿Hay algún grupo que se llame ${band}?`, `Is there a band called ${band}?`, {
+      intent: "bands",
+      name: band,
+      nameMatch: "exact",
+    });
+    add("named-count", `¿Cuántas bandas se llaman exactamente ${word}?`, `How many bands are named exactly ${word}?`, {
+      intent: "count",
+      name: word,
+      nameMatch: "exact",
+    });
+    add(
+      "name-prefix",
+      `¿Cuántas bandas hay cuyo nombre empiece por ${word}?`,
+      `How many bands have a name starting with ${word}?`,
+      { intent: "count", name: word, nameMatch: "prefix" },
+    );
+    add(
+      "name-contains",
+      `Bandas de ${gEs} cuyo nombre contenga ${word}`,
+      `${cap(gEn)} bands whose name contains ${word}`,
+      {
+        intent: "bands",
+        genre,
+        name: word,
+        nameMatch: "contains",
+      },
+    );
+    add(
+      "renamed",
+      `Bandas de ${gEs} de ${cEs} que cambiaron de nombre`,
+      `${cap(gEn)} bands from ${cEn} that changed their name`,
+      { intent: "bands", genre, country, status: "Changed name" },
+    );
     add("best", `Las mejores bandas de ${gEs} de ${cEs}`, `The best rated ${gEn} bands from ${cEn}`, {
       intent: "bands",
       genre,

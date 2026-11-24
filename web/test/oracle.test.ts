@@ -137,6 +137,14 @@ describe("engine", () => {
     expect(run({ intent: "albums", album: "reign in blood" })).toMatchObject({ total: 1, bandsWithoutData: 4 });
   });
 
+  it("finds unsigned bands and band names", () => {
+    expect(run({ intent: "bands", unsigned: true })).toMatchObject({ rows: [2, 4] });
+    expect(run({ intent: "count", name: "slayer", nameMatch: "exact" })).toMatchObject({ total: 2 });
+    expect(run({ intent: "count", name: "Sla", nameMatch: "prefix" })).toMatchObject({ total: 2 });
+    expect(run({ intent: "bands", name: "ngel", nameMatch: "contains" })).toMatchObject({ rows: [4] });
+    expect(run({ intent: "bands", name: "throne", nameMatch: "suffix" })).toMatchObject({ rows: [0] });
+  });
+
   it("keeps only bands of a pure genre when asked", () => {
     expect(run({ intent: "bands", genre: ["death"] })).toMatchObject({ rows: [2, 3] });
     expect(run({ intent: "bands", genre: ["death"], pureGenre: true })).toMatchObject({ rows: [3] });
@@ -269,6 +277,49 @@ describe("refine: the question's own cues", () => {
     expect(rules("bands that play only thrash")).toEqual({ intent: "bands", genre: ["thrash"], pureGenre: true });
     expect(rules("Primer grupo de doom metal en España")).not.toHaveProperty("pureGenre");
     expect(rules("Las bandas de gothic metal puro más antiguas de Países Bajos").intent).toBe("bands");
+  });
+
+  it("reads unsigned bands and band names (owner's reports)", () => {
+    expect(rules("¿Banda sin sello con más reseñas?")).toEqual({ intent: "bands", unsigned: true, sort: "reviews" });
+    expect(rules("Banda que no tenga sello con más reseñas")).toEqual({
+      intent: "bands",
+      unsigned: true,
+      sort: "reviews",
+    });
+    expect(rules("unsigned thrash bands from Japan")).toEqual({
+      intent: "bands",
+      unsigned: true,
+      country: "Japan",
+      genre: ["thrash"],
+    });
+    expect(rules("¿Hay algún grupo que se llame Slayer?")).toEqual({
+      intent: "bands",
+      name: "Slayer",
+      nameMatch: "exact",
+    });
+    expect(rules("¿Cuántas bandas hay que se llamen exactamente Killer?")).toEqual({
+      intent: "count",
+      name: "Killer",
+      nameMatch: "exact",
+    });
+    expect(rules("¿Cuántas bandas hay cuyo nombre empiece por Killer?")).toEqual({
+      intent: "count",
+      name: "Killer",
+      nameMatch: "prefix",
+    });
+    expect(rules("Bandas cuyo nombre contenga Death de España")).toEqual({
+      intent: "bands",
+      name: "Death",
+      nameMatch: "contains",
+      country: "Spain",
+    });
+    expect(rules("bands whose name ends with 'Hate'")).toEqual({ intent: "bands", name: "Hate", nameMatch: "suffix" });
+    expect(rules("¿Qué país tiene más bandas que se llamen Death?")).toEqual({
+      intent: "top",
+      groupBy: "country",
+      name: "Death",
+      nameMatch: "exact",
+    });
   });
 
   it("knows what the data can't answer", () => {

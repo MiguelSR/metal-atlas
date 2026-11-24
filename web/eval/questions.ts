@@ -169,4 +169,23 @@ export const QUESTIONS: [question: string, expected: Partial<Query>][] = [
   ["bandas de power metal que hablen de dragones", { intent: "bands", genre: ["power"], themes: ["dragon"] }],
   ["bandas que cantan sobre la reencarnación", { intent: "bands", themes: ["reincarnation"] }],
   ["bandas japonesas que hablen de samuráis", { intent: "bands", country: "Japan", themes: ["japan"] }],
+  // owner's reports, 2026-11-24 (unsigned bands, band names, pure genres)
+  ["¿Banda sin sello (o que no tenga sello) con más reseñas?", { intent: "bands", unsigned: true, sort: "reviews" }],
+  ["¿Hay algún grupo que se llame Slayer?", { intent: "bands", name: "Slayer", nameMatch: "exact" }],
+  ["¿Cuántas bandas hay que se llamen exactamente Killer?", { intent: "count", name: "Killer", nameMatch: "exact" }],
+  ["¿Cuántas bandas hay cuyo nombre empiece por Killer?", { intent: "count", name: "Killer", nameMatch: "prefix" }],
+  [
+    "bandas de black metal cuyo nombre termine en Hate",
+    { intent: "bands", genre: ["black"], name: "Hate", nameMatch: "suffix" },
+  ],
+  ["Is there a band called Flotsam and Jetsam?", { intent: "bands", name: "Flotsam and Jetsam", nameMatch: "exact" }],
+  [
+    "bandas de thrash españolas que cambiaron de nombre",
+    { intent: "bands", genre: ["thrash"], country: "Spain", status: "Changed name" },
+  ],
+  [
+    "primer grupo de doom metal sin mezclar con otros géneros",
+    { intent: "bands", genre: ["doom"], pureGenre: true, sort: "oldest" },
+  ],
+  ["primer grupo de puro doom", { intent: "bands", genre: ["doom"], pureGenre: true, sort: "oldest" }],
 ];

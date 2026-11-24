@@ -151,6 +151,18 @@ export class OracleEngine {
       tests.push((row) => hits.every((h) => h[column[row]!] === 1));
     }
     if (query.label) inDict("label", [query.label]);
+    if (query.unsigned) tests.push((row) => data.label[row] === -1);
+    if (query.name) {
+      const name = fold(query.name);
+      const how = query.nameMatch ?? "exact";
+      tests.push((row) => {
+        const candidate = this.index.nameOf(row);
+        if (how === "prefix") return candidate.startsWith(name);
+        if (how === "contains") return candidate.includes(name);
+        if (how === "suffix") return candidate.endsWith(name);
+        return candidate === name;
+      });
+    }
     if (query.status) {
       const code = STATUSES.indexOf(query.status) + 1;
       tests.push((row) => data.status[row] === code);

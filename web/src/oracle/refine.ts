@@ -8,7 +8,7 @@
  */
 
 import { fold } from "../format";
-import type { AlbumType, Group, Missing, Query, Sort, Status } from "./query";
+import type { AlbumType, Group, Missing, NameMatch, Query, Sort, Status } from "./query";
 import { conceptsIn, isConcept, themeOf } from "./themes";
 import { PLACE_NAMES } from "./vocab";
 
@@ -177,6 +177,9 @@ const SORTS: [RegExp, Sort][] = [
 ];
 
 const STATUS_CUES: [RegExp, Status][] = [
+  [/cambi\w* (?:de|el|su) nombre|changed (?:their |its )?names?|renamed/, "Changed name"],
+  [/en disputa|disputed/, "Disputed"],
+  [/estado desconocido|unknown status|status unknown/, "Unknown"],
   [
     /separad|\bsplit\b|split-up|disuelt|ya no existen|desaparecid|inactiv|defunct|broke up|disbanded|no longer/,
     "Split-up",
@@ -278,6 +281,57 @@ function backed(q: string, value: string, prefix = 4): boolean {
   return stem.length === prefix && words(q).some((w) => w.startsWith(stem));
 }
 
+const UNSIGNED =
+  /\bsin (?:sello|discografica)|\bno tengan? (?:sello|discografica)|\bunsigned\b|\bindependientes?\b|\bwithout (?:a )?(?:record )?label|\bno (?:record )?label|self-released|autoeditad/;
+
+/** A band name in quotes, a capitalized run (stopping at prepositions) or one word. */
+const NAME = String.raw`(?:["“'«]([^"”'»]+)["”'»]|([\p{Lu}\p{N}][^\s?¿!,]*(?:\s+(?:(?:and|of|the|&|n')\s+)?(?!(?:en|de|del|from|in|que|y|and|con|with|formad\w*|activ\w*)\b)[\p{Lu}\p{N}][^\s?¿!,]*)*)|([\p{L}\p{N}][^\s?¿!,]*))`;
+const NAME_PATTERNS: [RegExp, NameMatch][] = [
+  [
+    new RegExp(
+      String.raw`(?:nombres?|names?)\s+(?:que\s+)?(?:empiecen?|empiezan?|comiencen?|comienzan?|starts?|starting|begins?|beginning)\s+(?:por|con|with|by)\s+` +
+        NAME,
+      "iu",
+    ),
+    "prefix",
+  ],
+  [
+    new RegExp(
+      String.raw`(?:nombres?|names?)\s+(?:que\s+)?(?:contengan?|contienen?|incluyan?|incluyen?|lleven?|llevan?|contains?|containing|includes?|including)\s+(?:la palabra\s+|the word\s+)?` +
+        NAME,
+      "iu",
+    ),
+    "contains",
+  ],
+  [
+    new RegExp(
+      String.raw`(?:nombres?|names?)\s+(?:que\s+)?(?:terminen?|terminan?|acaben?|acaban?|ends?|ending)\s+(?:en|por|con|with|in)\s+` +
+        NAME,
+      "iu",
+    ),
+    "suffix",
+  ],
+  [new RegExp(String.raw`(?:empiecen?|comiencen?|start|begin)\s+(?:por|con|with)\s+` + NAME, "iu"), "prefix"],
+  [
+    new RegExp(
+      String.raw`(?:se\s+llam(?:e|en|a|an)|llamad[oa]s?|named|called)\s+(?:exactamente\s+|exactly\s+|igual que\s+)?` +
+        NAME,
+      "iu",
+    ),
+    "exact",
+  ],
+];
+
+/** A band name the question searches for ("que se llame Slayer", "names starting with Killer"), and how. */
+export function nameIn(question: string): { name: string; match: NameMatch } | null {
+  for (const [pattern, match] of NAME_PATTERNS) {
+    const m = pattern.exec(question);
+    const name = m && (m[1] ?? m[2] ?? m[3]);
+    if (name) return { name: name.trim(), match };
+  }
+  return null;
+}
+
 export function refine(question: string, model: Query, vocab: Vocabulary): Query {
   const q = fold(question).replace(/[¿?¡!]/g, " ");
   const tokens = words(q);
@@ -298,11 +352,16 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   const albums = /\bdiscos?\b|\balbum|discografia\b|discography|\beps?\b|\bdemos?\b|\blps?\b/.test(q);
   const count = /cuant[oa]s|how many|number of|numero de/.test(q);
   let group: Group | undefined;
-  if (/\bmas\b|\bmost\b|predomin|mayor|more|top\b|ranking|clasificacion/.test(q)) {
+  // "more" in lowercase only: "More Hate Productions" is a label, not a ranking
+  if (/\bmas\b|\bmost\b|predomin|mayor|top\b|ranking|clasificacion/.test(q) || /\bmore\b/.test(question)) {
     for (const [i, token] of tokens.entries()) {
       const hit = GROUP_WORDS.find(([pattern]) => pattern.test(token));
       // part of a country's name, not a grouping: "Estados Unidos", "Países Bajos", "United States"
-      const unitedStates = ["unidos", "bajos", "arabes"].includes(tokens[i + 1] ?? "") || tokens[i - 1] === "united";
+      const unitedStates =
+        ["unidos", "bajos", "arabes"].includes(tokens[i + 1] ?? "") ||
+        tokens[i - 1] === "united" ||
+        // "sin sello", "without a label": a filter, not a grouping
+        ["sin", "without", "no", "tenga", "tengan", "a"].includes(tokens[i - 1] ?? "");
       if (hit && !unitedStates && !(hit[1] === "year" && /anos? \d/.test(q))) {
         group = hit[1];
         break;
@@ -319,6 +378,16 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   // the model gave up but no cue says the data can't answer: try as a band search (undone at the end if no filter)
   if (query.intent === "unsupported") query.intent = "bands";
   if (query.intent === "top") query.groupBy = group ?? model.groupBy ?? "country";
+
+  // ---------- band names: "que se llame Slayer", "cuyo nombre empiece por Killer" ----------
+  const byName = query.intent === "albums" || query.intent === "lineup" ? null : nameIn(question);
+  if (byName) {
+    if (query.intent !== "count" && query.intent !== "top") query.intent = "bands";
+    query.name = byName.name;
+    query.nameMatch = byName.match;
+  }
+  const unsigned = UNSIGNED.test(q);
+  if (unsigned) query.unsigned = true;
 
   // ---------- names: band, member, album, label ----------
   const bandIsAsked = query.intent === "lineup" || query.intent === "albums";
@@ -343,7 +412,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
     const value = member ?? named?.[1];
     if (value) query.member = value;
   }
-  if (!bandIsAsked && !query.member) {
+  if (!bandIsAsked && !query.member && !unsigned) {
     const labelAsked = /\bsellos?\b|\blabels?\b|discografica|\brecords\b/.test(q);
     // a capitalized run that is a label: only with two words or more, or if the question talks about labels
     const mentioned = countriesIn(q, vocab).map(fold);
@@ -354,7 +423,8 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
         (labelAsked || n.includes(" ")) &&
         !vocab.country(n) &&
         !mentioned.some((c) => c.includes(n)) &&
-        !words(n).every((w) => GENRE_WORDS.has(w) || w === "metal" || w === "rock"),
+        !words(n).every((w) => GENRE_WORDS.has(w) || w === "metal" || w === "rock") &&
+        !(query.name && fold(query.name).includes(n)),
     );
     const label = model.label && backed(q, model.label, 99) ? model.label : named;
     if (label) query.label = label;
@@ -394,7 +464,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   const isTheme = (value: string): boolean => themed && themeText.includes(fold(value));
 
   // ---------- places ----------
-  const named = [query.band, query.album, query.label, query.member].filter(Boolean).map((n) => fold(n!));
+  const named = [query.band, query.album, query.label, query.member, query.name].filter(Boolean).map((n) => fold(n!));
   const outside = (value: string): boolean => !named.some((name) => name.includes(fold(value))) && !isTheme(value);
   const countries = countriesIn(q, vocab).filter(outside);
   if (countries.length) query.country = countries[0]!;
@@ -422,9 +492,15 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   // ---------- genre ----------
   const genre: string[] = [];
   // genre words before the theme cue only: "pagan metal bands that sing about paganism"
-  for (const token of themed ? words(q.slice(0, cue.index)) : tokens) {
+  // and not inside a name ("death técnico cuyo nombre contenga Death": the first "death" is the genre)
+  let genreText = themed ? q.slice(0, cue.index) : q;
+  for (const name of named) {
+    const at = genreText.lastIndexOf(name);
+    if (at >= 0) genreText = genreText.slice(0, at) + " " + genreText.slice(at + name.length);
+  }
+  for (const token of words(genreText)) {
     const word = GENRE_SYNONYMS[token] ?? token;
-    if (!GENRE_WORDS.has(word) || named.some((name) => name.includes(token))) continue;
+    if (!GENRE_WORDS.has(word)) continue;
     if (!genre.includes(word)) genre.push(word);
   }
   if (genre.length) {

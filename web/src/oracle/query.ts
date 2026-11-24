@@ -8,6 +8,7 @@ export const GROUPS = ["country", "genre", "label", "year", "decade", "location"
 export const SORTS = ["relevance", "reviews", "rating", "oldest", "newest"] as const;
 export const STATUSES = ["Active", "On hold", "Split-up", "Unknown", "Changed name", "Disputed"] as const;
 export const ALBUM_TYPES = ["Full-length", "EP", "Demo", "Single", "Live album", "Compilation", "Split"] as const;
+export const NAME_MATCHES = ["exact", "prefix", "contains", "suffix"] as const;
 export const MISSING = ["lyrics", "similar", "covers", "past_members", "tracks", "other"] as const;
 
 export type Intent = (typeof INTENTS)[number];
@@ -16,6 +17,7 @@ export type Sort = (typeof SORTS)[number];
 export type Status = (typeof STATUSES)[number];
 export type AlbumType = (typeof ALBUM_TYPES)[number];
 export type Missing = (typeof MISSING)[number];
+export type NameMatch = (typeof NAME_MATCHES)[number];
 
 export interface Query {
   intent: Intent;
@@ -35,6 +37,11 @@ export interface Query {
   /** lyrical themes, as theme concepts (themes.ts): all must appear */
   themes?: string[];
   label?: string;
+  /** bands without a label (Unsigned/independent) */
+  unsigned?: boolean;
+  /** a band name to look for, and how: "exact" (named exactly), "prefix", "contains", "suffix" */
+  name?: string;
+  nameMatch?: NameMatch;
   /** a musician in the lineup */
   member?: string;
   /** an instrument or role, in English: guitars, bass, drums, vocals, keyboards */
@@ -53,7 +60,7 @@ export interface Query {
 
 export const MAX_LIMIT = 50;
 
-const TEXT_FIELDS = ["band", "country", "location", "label", "member", "role", "album"] as const;
+const TEXT_FIELDS = ["band", "country", "location", "label", "member", "role", "album", "name"] as const;
 const YEAR_FIELDS = ["formedFrom", "formedTo", "releasedFrom", "releasedTo"] as const;
 
 /** JSON schema of a query, given to the model to constrain its output. */
@@ -71,6 +78,9 @@ export const QUERY_SCHEMA = {
     formedTo: { type: "integer" },
     themes: { type: "array", items: { type: "string" } },
     label: { type: "string" },
+    unsigned: { type: "boolean" },
+    name: { type: "string" },
+    nameMatch: { type: "string", enum: NAME_MATCHES },
     member: { type: "string" },
     role: { type: "string" },
     album: { type: "string" },
@@ -129,6 +139,8 @@ export function parseQuery(output: unknown): Query {
   if (isOneOf(GROUPS, r.groupBy)) query.groupBy = r.groupBy;
   if (isOneOf(SORTS, r.sort)) query.sort = r.sort;
   if (isOneOf(MISSING, r.missing)) query.missing = r.missing;
+  if (r.unsigned === true) query.unsigned = true;
+  if (query.name) query.nameMatch = isOneOf(NAME_MATCHES, r.nameMatch) ? r.nameMatch : "exact";
   if (typeof r.limit === "number" && r.limit >= 1) query.limit = Math.min(Math.floor(r.limit), MAX_LIMIT);
   // a "top" without a grouping is a list of bands
   if (query.intent === "top" && !query.groupBy) query.intent = "bands";
