@@ -103,6 +103,27 @@ export class OracleIndex implements Vocabulary {
     return this.bandNames.has(name);
   }
 
+  /**
+   * The band whose name is closest to a misspelt one ("misty gray" -> "Misty Grey"): at most one edit for short
+   * names, two from 9 letters; the most relevant band among the closest. Null if none is that close.
+   */
+  closestBand(name: string): string | null {
+    const max = name.length >= 9 ? 2 : name.length >= 4 ? 1 : 0;
+    if (!max) return null;
+    let best: number | null = null;
+    let bestDistance = max + 1;
+    for (let row = 0; row < this.foldedNames.length && bestDistance > 1; row++) {
+      const candidate = this.foldedNames[row]!;
+      if (Math.abs(candidate.length - name.length) >= bestDistance) continue;
+      const d = editDistance(name, candidate, bestDistance - 1);
+      if (d < bestDistance) {
+        best = row;
+        bestDistance = d;
+      }
+    }
+    return best === null ? null : this.data.name[best]!;
+  }
+
   /** A label's name, also without its usual suffix ("Century Media" for "Century Media Records"). */
   isLabel(name: string): boolean {
     this.labelNames ??= new Set(this.foldedDict("label"));
@@ -195,4 +216,26 @@ export class OracleIndex implements Vocabulary {
     const i = this.data[dict][row]!;
     return i < 0 ? "" : this.data.dicts[dict][i]!;
   }
+}
+
+/** Edits (insert, delete, replace, swap two neighbours) from `a` to `b`, or `max + 1` once it exceeds `max`. */
+export function editDistance(a: string, b: string, max: number): number {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let before = new Array<number>(b.length + 1).fill(0);
+  let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    let rowMin = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let d = Math.min(previous[j]! + 1, current[j - 1]! + 1, previous[j - 1]! + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d = Math.min(d, before[j - 2]! + 1);
+      current.push(d);
+      rowMin = Math.min(rowMin, d);
+    }
+    if (rowMin > max) return max + 1;
+    before = previous;
+    previous = current;
+  }
+  return Math.min(previous[b.length]!, max + 1);
 }

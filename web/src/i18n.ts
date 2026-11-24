@@ -294,6 +294,7 @@ function english(nf: (n: number) => string) {
       other: "The Oracle can't answer that with the data it has.",
     },
     oCountryAsLocation: (v: string) => `“${v}” isn't a country in Metal Archives: searched as a place.`,
+    oUnknownBand: (v: string) => `No band called “${v}” in Metal Archives (nor one with a close name).`,
     oBadAnswer: "The AI's answer wasn't a valid query: understood without AI.",
     oFormedRow: (y: number) => `formed ${y}`,
   };
@@ -600,6 +601,7 @@ function spanish(nf: (n: number) => string): Messages {
       other: "El Oráculo no puede responder a eso con los datos que tiene.",
     },
     oCountryAsLocation: (v) => `“${v}” no es un país en Metal Archives: lo he buscado como lugar.`,
+    oUnknownBand: (v) => `No encuentro ninguna banda llamada “${v}” en Metal Archives (ni con un nombre parecido).`,
     oBadAnswer: "La respuesta de la IA no era una consulta válida: entendida sin IA.",
     oFormedRow: (y) => `formada en ${y}`,
   };

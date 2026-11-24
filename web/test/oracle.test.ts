@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { translator } from "../src/i18n";
-import { type OracleFile, OracleIndex } from "../src/oracle/data";
+import { type OracleFile, OracleIndex, editDistance } from "../src/oracle/data";
 import { describeQuery } from "../src/oracle/describe";
 import { OracleEngine, needsAlbums, roleNeedle } from "../src/oracle/engine";
 import { EXAMPLES } from "../src/oracle/examples";
@@ -85,6 +85,31 @@ describe("query parsing", () => {
     expect(parseQuery({ intent: "top" }).intent).toBe("bands");
     expect(() => parseQuery('{"intent":"dance"}')).toThrow();
     expect(() => extractJson("no idea")).toThrow();
+  });
+});
+
+describe("misspelt band names", () => {
+  it("counts edits, swaps included, up to a maximum", () => {
+    expect(editDistance("misty gray", "misty grey", 2)).toBe(1);
+    expect(editDistance("slayre", "slayer", 2)).toBe(1);
+    expect(editDistance("opth", "opeth", 1)).toBe(1);
+    expect(editDistance("darkthrone", "slayer", 2)).toBe(3);
+  });
+
+  it("finds the closest band, the most relevant one on a tie", () => {
+    const index = new OracleIndex(oracleFile());
+    expect(index.closestBand("slayr")).toBe("Slayer");
+    expect(index.closestBand("darktrone")).toBe("Darkthrone");
+    expect(index.closestBand("dark")).toBeNull();
+    expect(index.closestBand("sly")).toBeNull();
+  });
+
+  it("notes a band that doesn't exist instead of answering about every band", () => {
+    const engine = new OracleEngine(new OracleIndex(oracleFile()));
+    expect(engine.run({ intent: "bands", band: "Zzqxwv" })).toEqual({
+      answer: { kind: "bands", total: 0, rows: [] },
+      notes: [{ kind: "unknownBand", value: "Zzqxwv" }],
+    });
   });
 });
 
@@ -219,9 +244,28 @@ const vocab: Vocabulary = {
   isLabel: (n) => n === "nuclear blast",
   country: (n) => COUNTRIES[n] ?? null,
 };
+const fuzzy: Vocabulary = {
+  ...vocab,
+  closestBand: (n) => ({ "misty gray": "Misty Grey", "black sabath": "Black Sabbath" })[n] ?? null,
+  isBand: (n) => vocab.isBand(n) || ["misty grey", "black sabbath", "black"].includes(n),
+};
 const rules = (question: string, model: Query = { intent: "bands" }): Query => refine(question, model, vocab);
 
 describe("refine: the question's own cues", () => {
+  it("reads a misspelt band name as the closest band, or keeps it when none is close (owner's report)", () => {
+    expect(refine("¿Cuál es el primer disco de Misty Gray?", { intent: "bands" }, fuzzy)).toMatchObject({
+      intent: "albums",
+      band: "Misty Grey",
+      sort: "oldest",
+    });
+    // the misspelt full name beats "Black", a band inside it, and "black" isn't a genre there
+    const sabbath = refine("Primer disco de Black Sabath", { intent: "bands" }, fuzzy);
+    expect(sabbath.band).toBe("Black Sabbath");
+    expect(sabbath.genre).toBeUndefined();
+    expect(refine("Discos de Zzqxwv Blorp", { intent: "bands" }, fuzzy).band).toBe("Zzqxwv Blorp");
+    expect(refine("Primer disco de doom de España", { intent: "bands" }, fuzzy).band).toBeUndefined();
+  });
+
   it("reads years, decades and ranges", () => {
     expect(yearsIn("formadas en los 80")).toEqual({ from: 1980, to: 1989 });
     expect(yearsIn("formed in the 2000s")).toEqual({ from: 2000, to: 2009 });

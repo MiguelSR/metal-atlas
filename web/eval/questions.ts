@@ -222,4 +222,10 @@ export const QUESTIONS: [question: string, expected: Partial<Query>][] = [
     { intent: "top", groupBy: "theme", genre: ["folk"], country: "Finland" },
   ],
   ["bandas de thrash formadas a partir del 2010", { intent: "bands", genre: ["thrash"], formedFrom: 2010 }],
+  // owner's report, 2026-11-24: a misspelt band answered about every band ("Misty Gray" is Misty Grey)
+  [
+    "¿Cuál es el primer disco de Misty Gray?",
+    { intent: "albums", band: "Misty Grey", sort: "oldest", limit: 1, albumType: "Full-length" },
+  ],
+  ["Who sings in Iron Maidn?", { intent: "lineup", band: "Iron Maiden", role: "vocals" }],
 ];

@@ -316,7 +316,7 @@ export class OracleView {
       .join("");
     const notes = [
       ...(a.badModelAnswer ? [t("oBadAnswer")] : []),
-      ...a.result.notes.map((n) => t("oCountryAsLocation", n.value)),
+      ...a.result.notes.map((n) => t(n.kind === "unknownBand" ? "oUnknownBand" : "oCountryAsLocation", n.value)),
     ]
       .map((n) => `<div class="onote">${esc(n)}</div>`)
       .join("");

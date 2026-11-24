@@ -29,7 +29,7 @@ export type Answer =
 
 /** Something the engine changed or couldn't use from the query, to show next to the answer. */
 export interface Note {
-  kind: "countryAsLocation";
+  kind: "countryAsLocation" | "unknownBand";
   value: string;
 }
 
@@ -141,6 +141,7 @@ export class OracleEngine {
     if (query.band) {
       const name = fold(query.band);
       const exact = this.bandRows(name);
+      if (!exact.length) notes.push({ kind: "unknownBand", value: query.band });
       const set = new Set(exact);
       tests.push((row) => set.has(row));
     }

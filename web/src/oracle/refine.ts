@@ -17,6 +17,8 @@ const PLACES: Record<string, string> = { ...PLACE_NAMES, "bay area": "Bay Area" 
 /** What the rules need to know about the data. Names are folded (see `fold`). */
 export interface Vocabulary {
   isBand(name: string): boolean;
+  /** The band whose name is closest to a misspelt one, or null. */
+  closestBand?(name: string): string | null;
   isLabel(name: string): boolean;
   /** The Metal Archives name of a country named in English, Spanish or a common alias; null if it isn't one. */
   country(name: string): string | null;
@@ -320,6 +322,23 @@ function namedIn(question: string, accept: (folded: string) => boolean): string 
   return best;
 }
 
+/**
+ * A band asked for by a name that isn't in the data ("el primer disco de Misty Gray"): the closest band name, or
+ * the name as written so the answer is empty instead of about every band.
+ */
+function misspeltBand(question: string, vocab: Vocabulary): { band: string; written: string } | undefined {
+  const after =
+    /\b(?:de|del|of|by|en|in)\s+["“'«]?([\p{Lu}\p{N}][^\s?¿!,"”»]*(?:\s+(?:(?:and|of|the|&)\s+)?[\p{Lu}\p{N}][^\s?¿!,"”»]*)*)/gu;
+  for (const [, name] of question.matchAll(after)) {
+    const folded = fold(name!);
+    const genreOnly = folded.split(" ").every((w) => GENRE_WORDS.has(w) || w === "metal" || w === "rock");
+    if (NOT_A_NAME.has(folded) || vocab.country(folded) || genreOnly) continue;
+    if (vocab.isBand(folded)) return { band: name!, written: name! };
+    return { band: vocab.closestBand?.(folded) ?? name!, written: name! };
+  }
+  return undefined;
+}
+
 /** Text the question backs: it contains the value, or a word sharing its first `prefix` letters. */
 function backed(q: string, value: string, prefix = 4): boolean {
   const v = fold(value);
@@ -459,9 +478,20 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
       query.album = title;
     }
   }
+  /** the band name as the question writes it, when it differs (misspelt) */
+  let written: string | undefined;
   if (bandIsAsked && !query.album) {
     const band = model.band && vocab.isBand(fold(model.band)) && backed(q, model.band, 99) ? model.band : null;
-    query.band = band ?? namedIn(question, (name) => vocab.isBand(name)) ?? undefined;
+    const exact = namedIn(question, (name) => vocab.isBand(name));
+    const misspelt = misspeltBand(question, vocab);
+    // "Black Sabath": the misspelt full name beats "Black", the band found inside it
+    if (band) query.band = band;
+    else if (exact && !(misspelt && misspelt.written.length > exact.length && vocab.isBand(fold(misspelt.band)))) {
+      query.band = exact;
+    } else if (misspelt) {
+      query.band = misspelt.band;
+      written = misspelt.written;
+    }
   }
   if (model.album && !query.album && query.intent === "albums" && backed(q, model.album, 99)) query.album = model.album;
   if (memberBands || model.member) {
@@ -506,7 +536,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   // not in lineup or album questions ("¿Quién canta en Severe Torture?"), and never inside a name
   const themed = cue !== null && query.intent !== "lineup" && query.intent !== "albums" && query.groupBy !== "theme";
   let themeText = themed ? q.slice(cue.index) : "";
-  for (const name of [query.band, query.album, query.label, query.member]) {
+  for (const name of [query.band, written, query.album, query.label, query.member]) {
     if (name) themeText = themeText.replace(fold(name), " ");
   }
   let themes = conceptsIn(themeText);
@@ -525,7 +555,9 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   const isTheme = (value: string): boolean => themed && themeText.includes(fold(value));
 
   // ---------- places ----------
-  const named = [query.band, query.album, query.label, query.member, query.name].filter(Boolean).map((n) => fold(n!));
+  const named = [query.band, written, query.album, query.label, query.member, query.name]
+    .filter(Boolean)
+    .map((n) => fold(n!));
   const outside = (value: string): boolean => !named.some((name) => name.includes(fold(value))) && !isTheme(value);
   // never inside a name: "American Line Productions" is not about the United States
   let unnamed = q;
