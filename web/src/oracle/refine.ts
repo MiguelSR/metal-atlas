@@ -331,12 +331,58 @@ function misspeltBand(question: string, vocab: Vocabulary): { band: string; writ
     /\b(?:de|del|of|by|en|in)\s+["“'«]?([\p{Lu}\p{N}][^\s?¿!,"”»]*(?:\s+(?:(?:and|of|the|&)\s+)?[\p{Lu}\p{N}][^\s?¿!,"”»]*)*)/gu;
   for (const [, name] of question.matchAll(after)) {
     const folded = fold(name!);
-    const genreOnly = folded.split(" ").every((w) => GENRE_WORDS.has(w) || w === "metal" || w === "rock");
-    if (NOT_A_NAME.has(folded) || vocab.country(folded) || genreOnly) continue;
+    if (NOT_A_NAME.has(folded) || vocab.country(folded) || genreOnly(folded) || YEAR.test(folded)) continue;
     if (vocab.isBand(folded)) return { band: name!, written: name! };
     return { band: vocab.closestBand?.(folded) ?? name!, written: name! };
   }
   return undefined;
+}
+
+const PREPOSITION = /^(?:de|del|of|by|en|in)$/;
+/** a year, never a band name here ("discos de thrash de 1986"; there is a band called 1986) */
+const YEAR = /^(?:19|20)\d\d$/;
+/** words that start what follows "de" without being a band: "discos de bandas de…" */
+const NOT_A_BAND_START = new Set(
+  "bandas banda grupos grupo discos disco albums album la las los el the a an un una su sus mi mis my their los años".split(
+    " ",
+  ),
+);
+
+/** Whether a folded phrase only names a genre ("black metal"), so it isn't read as a band. */
+const genreOnly = (folded: string): boolean =>
+  folded.split(" ").every((w) => GENRE_WORDS.has(w) || w === "metal" || w === "rock");
+
+/** A known band named after a preposition, whatever its case ("primer disco de black sabbath"): the longest one. */
+function bandAfterPreposition(q: string, vocab: Vocabulary): string | null {
+  const tokens = words(q);
+  let best: string | null = null;
+  for (let i = 1; i < tokens.length; i++) {
+    if (!PREPOSITION.test(tokens[i - 1]!) || NOT_A_BAND_START.has(tokens[i]!)) continue;
+    for (let j = Math.min(tokens.length, i + 6); j > i; j--) {
+      const phrase = tokens.slice(i, j).join(" ");
+      if (genreOnly(phrase) || vocab.country(phrase) || NOT_A_NAME.has(phrase) || YEAR.test(phrase)) continue;
+      if (vocab.isBand(phrase) && (!best || phrase.length > best.length)) best = phrase;
+    }
+  }
+  return best && (vocab.closestBand?.(best) ?? best);
+}
+
+/**
+ * The words after the last preposition, when they are all a band question can be about ("primer disco de zzqxwv
+ * blorp"): the closest band, or the words as written. Only used when nothing else was read from the question.
+ */
+function trailingBand(question: string, vocab: Vocabulary): { band: string; written: string } | undefined {
+  const tokens = question.split(/[\s¿?¡!,;:"“”«»()]+/).filter(Boolean);
+  let last = -1;
+  tokens.forEach((token, i) => {
+    if (PREPOSITION.test(fold(token))) last = i;
+  });
+  const rest = tokens.slice(last + 1);
+  if (last < 0 || !rest.length || rest.length > 6 || NOT_A_BAND_START.has(fold(rest[0]!))) return undefined;
+  const written = rest.join(" ");
+  const folded = fold(written);
+  if (genreOnly(folded) || vocab.country(folded) || NOT_A_NAME.has(folded) || YEAR.test(folded)) return undefined;
+  return { band: vocab.closestBand?.(folded) ?? written, written };
 }
 
 /** Text the question backs: it contains the value, or a word sharing its first `prefix` letters. */
@@ -482,7 +528,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   let written: string | undefined;
   if (bandIsAsked && !query.album) {
     const band = model.band && vocab.isBand(fold(model.band)) && backed(q, model.band, 99) ? model.band : null;
-    const exact = namedIn(question, (name) => vocab.isBand(name));
+    const exact = namedIn(question, (name) => vocab.isBand(name) && !YEAR.test(name)) ?? bandAfterPreposition(q, vocab);
     const misspelt = misspeltBand(question, vocab);
     // "Black Sabath": the misspelt full name beats "Black", the band found inside it
     if (band) query.band = band;
@@ -655,6 +701,12 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
     /\b(?:top|primeros|primeras|first)\s+(\d{1,2})\b/.exec(q) ??
     /\b(\d{1,2})\s+(?:bandas|grupos|bands|sellos|labels|paises|countries|discos|albums|ciudades|cities)/.exec(q);
   if (limit) query.limit = Number(limit[1]);
+  // a band question that names nothing the data knows ("primer disco de zzqxwv blorp") is about that band, not every one
+  const ASPECTS = new Set(["intent", "sort", "limit", "albumType", "role"]);
+  if (bandIsAsked && Object.keys(query).every((key) => ASPECTS.has(key))) {
+    const trailing = trailingBand(question, vocab);
+    if (trailing) query.band = trailing.band;
+  }
   if (model.intent === "unsupported" && query.intent === "bands" && Object.keys(query).length === 1) {
     return { intent: "unsupported", missing: model.missing ?? "other" };
   }

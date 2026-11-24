@@ -228,4 +228,12 @@ export const QUESTIONS: [question: string, expected: Partial<Query>][] = [
     { intent: "albums", band: "Misty Grey", sort: "oldest", limit: 1, albumType: "Full-length" },
   ],
   ["Who sings in Iron Maidn?", { intent: "lineup", band: "Iron Maiden", role: "vocals" }],
+  [
+    "último disco de black sabbath",
+    { intent: "albums", band: "Black Sabbath", sort: "newest", limit: 1, albumType: "Full-length" },
+  ],
+  [
+    "primer disco de zzqxwv blorp",
+    { intent: "albums", band: "zzqxwv blorp", sort: "oldest", limit: 1, albumType: "Full-length" },
+  ],
 ];

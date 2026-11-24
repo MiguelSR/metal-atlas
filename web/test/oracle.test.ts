@@ -266,6 +266,17 @@ describe("refine: the question's own cues", () => {
     expect(refine("Primer disco de doom de España", { intent: "bands" }, fuzzy).band).toBeUndefined();
   });
 
+  it("reads band names in lowercase, and an unknown one as a band rather than every band", () => {
+    expect(rules("primer disco de bathory")).toMatchObject({ intent: "albums", band: "bathory", sort: "oldest" });
+    expect(rules("quién canta en iron maiden").band).toBe("iron maiden");
+    expect(refine("primer disco de misty gray", { intent: "bands" }, fuzzy).band).toBe("Misty Grey");
+    expect(rules("primer disco de zzqxwv blorp").band).toBe("zzqxwv blorp");
+    expect(rules("primer disco de doom")).toMatchObject({ genre: ["doom"] });
+    expect(rules("primer disco de doom").band).toBeUndefined();
+    expect(rules("discos de thrash de 1986").band).toBeUndefined();
+    expect(rules("primer disco").band).toBeUndefined();
+  });
+
   it("reads years, decades and ranges", () => {
     expect(yearsIn("formadas en los 80")).toEqual({ from: 1980, to: 1989 });
     expect(yearsIn("formed in the 2000s")).toEqual({ from: 2000, to: 2009 });

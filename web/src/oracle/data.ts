@@ -105,9 +105,12 @@ export class OracleIndex implements Vocabulary {
 
   /**
    * The band whose name is closest to a misspelt one ("misty gray" -> "Misty Grey"): at most one edit for short
-   * names, two from 9 letters; the most relevant band among the closest. Null if none is that close.
+   * names, two from 9 letters; the most relevant band among the closest. Null if none is that close. A band named
+   * exactly so comes back as Metal Archives writes it.
    */
   closestBand(name: string): string | null {
+    const exact = this.isBand(name) ? this.foldedNames.indexOf(name) : -1;
+    if (exact >= 0) return this.data.name[exact]!;
     const max = name.length >= 9 ? 2 : name.length >= 4 ? 1 : 0;
     if (!max) return null;
     let best: number | null = null;
