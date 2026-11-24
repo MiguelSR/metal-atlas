@@ -137,6 +137,16 @@ describe("engine", () => {
     expect(run({ intent: "albums", album: "reign in blood" })).toMatchObject({ total: 1, bandsWithoutData: 4 });
   });
 
+  it("counts heavy and rock as kindred to doom", () => {
+    const file = oracleFile();
+    file.genres = ["Heavy Metal", "Doom Metal", "Doom Rock", "Death Metal", "Stoner Rock"];
+    file.dicts.genre = ["Heavy/Doom Metal", "Doom Rock", "Doom/Death Metal", "Doom Metal/Stoner Rock", "Heavy Metal"];
+    file.genre = [0, 1, 2, 3, 4];
+    file.g = [[0, 1], [2], [1, 3], [1, 4], [0]];
+    const doom = new OracleEngine(new OracleIndex(file)).run({ intent: "bands", genre: ["doom"], pureGenre: true });
+    expect(doom.answer).toMatchObject({ rows: [0, 1] });
+  });
+
   it("finds unsigned bands and band names", () => {
     expect(run({ intent: "bands", unsigned: true })).toMatchObject({ rows: [2, 4] });
     expect(run({ intent: "count", name: "slayer", nameMatch: "exact" })).toMatchObject({ total: 2 });

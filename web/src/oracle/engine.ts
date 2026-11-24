@@ -72,6 +72,12 @@ export function roleNeedle(role: string): string {
   return ROLE_WORDS[word] ?? word.replace(/s$/, "");
 }
 
+/**
+ * Genres that don't make a band "mixed" for a given one (owner, 2026-11-24: Heavy/Doom and Doom Rock are pure doom,
+ * so Black Sabbath counts). The row must still have the asked genre: the genre-word filter runs first.
+ */
+const KINDRED: Record<string, string[]> = { doom: ["heavy", "rock"] };
+
 /** Words that name a genre family: a genre that has one besides the asked one is a mix, not pure. */
 const GENRE_FAMILIES = new Set(
   (
@@ -189,7 +195,8 @@ export class OracleEngine {
 
   /**
    * Which normalized genres are purely the asked genre: they contain every word and no other genre family
-   * ("Epic Doom Metal" and "Funeral Doom" are pure doom; "Blackened Doom", "Doom Rock" and "Drone Doom" are not).
+   * ("Epic Doom Metal", "Funeral Doom", and with KINDRED "Heavy/Doom" and "Doom Rock" are pure doom; "Blackened Doom",
+   * "Drone Doom" and "Doom/Death" are not).
    */
   private pureGenres(words: string[]): Uint8Array {
     const asked = words.map(fold);
@@ -200,9 +207,13 @@ export class OracleEngine {
         .replace(/[()]/g, " ")
         .split(/[\s/,-]+/)
         .filter(Boolean);
+      const tolerated = asked.flatMap((word) => KINDRED[word] ?? []);
+      const isAsked = (part: string): boolean => asked.some((word) => part.startsWith(word));
       const hasAll = asked.every((word) => parts.some((part) => part.startsWith(word)));
-      const other = parts.some((part) => GENRE_FAMILIES.has(part) && !asked.some((word) => part.startsWith(word)));
-      if (hasAll && !other) pure[i] = 1;
+      const other = parts.some((part) => GENRE_FAMILIES.has(part) && !isAsked(part) && !tolerated.includes(part));
+      // the genre itself ("Epic Doom Metal", "Doom Rock"), or a kindred one beside it ("Heavy Metal" in Heavy/Doom)
+      const kindred = parts.some((part) => tolerated.includes(part));
+      if ((hasAll || kindred) && !other) pure[i] = 1;
     });
     return pure;
   }
