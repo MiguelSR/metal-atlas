@@ -167,12 +167,21 @@ const GROUP_WORDS: [RegExp, Group][] = [
 ];
 
 const SORTS: [RegExp, Sort][] = [
+  // the low ends first: "valoración más baja" must not be read as "best rated"
+  [
+    /\bpeor|\bworst\b|lowest[- ]rated|lowest (?:average )?(?:rating|score)|(?:valoracion|nota|puntuacion)(?: media)? mas baja|menor (?:valoracion|nota|puntuacion)|peor valorad|mas baja valoracion/,
+    "lowestRating",
+  ],
+  [/menos rese|fewest reviews|least reviewed|less reviews|fewer reviews|menor numero de rese/, "fewestReviews"],
   [
     /mas antigu|oldest|earliest|veteran|pioner|pioneer|se form\w* (antes|primero)|formad[oa]s? (antes|primero)|\bprimer[oa]? (grupo|banda)|\bfirst band|formed first/,
     "oldest",
   ],
   [/mas (nuev|recient|joven)|newest|youngest|latest|\bultim|most recent|\blast\b/, "newest"],
-  [/\bmejor|\bbest\b|top rated|highest rated|valorad|puntuad/, "rating"],
+  [
+    /\bmejor|\bbest\b|top rated|highest[- ]rated|highest (?:average )?(?:rating|score)|valorad|puntuad|(?:valoracion|nota|puntuacion)(?: media)? mas alta/,
+    "rating",
+  ],
   [/mas rese|most review|mas popular|most popular|mas conocid|best known|famos|famous/, "reviews"],
 ];
 
@@ -205,6 +214,45 @@ const century = (digits: string): number => {
   const n = Number(digits);
   return digits.length === 4 ? n : n >= 50 ? 1900 + n : 2000 + n;
 };
+
+const REVIEW = "(?:resenas?|reviews?|criticas?)";
+
+/** Review-count ranges: "entre 5 y 10 reseñas", "more than 20 reviews", "sin reseñas". */
+export function reviewsIn(q: string): { min?: number; max?: number } | null {
+  const text = q.replace(/\b(?:una|one|a single)\s+(resena|review)/g, "1 $1");
+  const n = (pattern: string): RegExpExecArray | null => new RegExp(pattern).exec(text);
+  let m: RegExpExecArray | null;
+  if (n(`\\b(?:sin|no tienen?|no tengan|without|no|ninguna|zero|0)\\s+${REVIEW}`)) return { max: 0 };
+  if ((m = n(`(?:entre|between|de)\\s+(\\d+)\\s+(?:y|and|a|to)\\s+(\\d+)\\s+${REVIEW}`))) {
+    return { min: Number(m[1]), max: Number(m[2]) };
+  }
+  if ((m = n(`(?:mas de|more than|over)\\s+(\\d+)\\s+${REVIEW}`))) return { min: Number(m[1]) + 1 };
+  if ((m = n(`(?:al menos|como minimo|minimo|at least)\\s+(\\d+)\\s+${REVIEW}`))) return { min: Number(m[1]) };
+  if ((m = n(`(?:menos de|fewer than|less than|under)\\s+(\\d+)\\s+${REVIEW}`))) return { max: Number(m[1]) - 1 };
+  if ((m = n(`(?:como mucho|como maximo|at most|hasta|up to)\\s+(\\d+)\\s+${REVIEW}`))) return { max: Number(m[1]) };
+  if ((m = n(`(?:con|with|tengan|tienen|have|has)\\s+(?:exactamente\\s+|exactly\\s+)?(\\d+)\\s+${REVIEW}`))) {
+    return { min: Number(m[1]), max: Number(m[1]) };
+  }
+  return null;
+}
+
+/** Average-rating ranges: "valoración media superior al 90%", "rated below 50%", "entre el 60 y el 70%". */
+export function ratingIn(q: string): { min?: number; max?: number } | null {
+  if (!/valorac|nota|puntuac|rating|rated|score|%/.test(q)) return null;
+  let m = /entre (?:el )?(\d{1,3})\s*%?\s*y (?:el )?(\d{1,3})\s*%|between (\d{1,3})\s*%?\s*and (\d{1,3})\s*%/.exec(q);
+  if (m) return { min: Number(m[1] ?? m[3]), max: Number(m[2] ?? m[4]) };
+  m =
+    /(?:superior|mayor|mas|por encima|encima|above|over|higher than|more than|at least|al menos|minimo)\s+(?:a |al |de |del |que |the |of )?(?:un |una |el )?(\d{1,3})\s*%?/.exec(
+      q,
+    );
+  if (m) return { min: Number(m[1]) };
+  m =
+    /(?:inferior|menor|menos|por debajo|debajo|below|under|lower than|less than)\s+(?:a |al |de |del |que |the |of )?(?:un |una |el )?(\d{1,3})\s*%?/.exec(
+      q,
+    );
+  if (m) return { max: Number(m[1]) };
+  return null;
+}
 
 /** Years named in the question: a decade, a single year, a range, "after"/"before". */
 export function yearsIn(q: string): { from?: number; to?: number } | null {
@@ -522,7 +570,15 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
     const status = STATUS_CUES.find(([pattern]) => pattern.test(q));
     if (status) query.status = status[1];
   }
-  const years = yearsIn(q);
+  // review counts and ratings ("entre 5 y 10 reseñas", "superior al 90%"); their numbers are not years
+  const reviewRange = reviewsIn(q);
+  if (reviewRange?.min !== undefined) query.reviewsMin = reviewRange.min;
+  if (reviewRange?.max !== undefined) query.reviewsMax = reviewRange.max;
+  const reviewless = q.replace(new RegExp(`[^\\s]*\\s*\\d+\\s+${REVIEW}`, "g"), " ");
+  const ratingRange = reviewRange ? null : ratingIn(reviewless);
+  if (ratingRange?.min !== undefined) query.ratingMin = ratingRange.min;
+  if (ratingRange?.max !== undefined) query.ratingMax = ratingRange.max;
+  const years = yearsIn(ratingRange ? reviewless.replace(/\d{1,3}\s*%/g, " ") : reviewless);
   if (years) {
     if (query.intent === "albums") {
       if (years.from) query.releasedFrom = years.from;

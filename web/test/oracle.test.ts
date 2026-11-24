@@ -7,7 +7,7 @@ import { OracleEngine, roleNeedle } from "../src/oracle/engine";
 import { EXAMPLES } from "../src/oracle/examples";
 import { pickRandom } from "../src/oracle/oracle-view";
 import { type Query, extractJson, parseQuery } from "../src/oracle/query";
-import { type Vocabulary, countriesIn, refine, yearsIn } from "../src/oracle/refine";
+import { type Vocabulary, countriesIn, ratingIn, refine, reviewsIn, yearsIn } from "../src/oracle/refine";
 import { conceptsIn, themeOf } from "../src/oracle/themes";
 
 /** Five bands, most relevant first. */
@@ -155,6 +155,14 @@ describe("engine", () => {
     expect(run({ intent: "bands", name: "throne", nameMatch: "suffix" })).toMatchObject({ rows: [0] });
   });
 
+  it("filters by review counts and ratings, and sorts from the low end", () => {
+    expect(run({ intent: "bands", reviewsMin: 3, reviewsMax: 200 })).toMatchObject({ rows: [0, 3] });
+    expect(run({ intent: "bands", reviewsMax: 0 })).toMatchObject({ rows: [4] });
+    expect(run({ intent: "bands", ratingMin: 82 })).toMatchObject({ rows: [0, 3] });
+    expect(run({ intent: "bands", sort: "lowestRating" })).toMatchObject({ rows: [1, 0, 3] });
+    expect(run({ intent: "bands", sort: "fewestReviews" })).toMatchObject({ rows: [2, 3, 0, 1] });
+  });
+
   it("keeps only bands of a pure genre when asked", () => {
     expect(run({ intent: "bands", genre: ["death"] })).toMatchObject({ rows: [2, 3] });
     expect(run({ intent: "bands", genre: ["death"], pureGenre: true })).toMatchObject({ rows: [3] });
@@ -173,19 +181,20 @@ describe("engine", () => {
 });
 
 /** A vocabulary like the real one, for a few names. */
+const COUNTRIES: Record<string, string> = {
+  spain: "Spain",
+  espana: "Spain",
+  japan: "Japan",
+  japon: "Japan",
+  "estados unidos": "United States",
+  grecia: "Greece",
+  alemania: "Germany",
+  "reino unido": "United Kingdom",
+};
 const vocab: Vocabulary = {
   isBand: (n) => ["judas priest", "iron maiden", "ghost", "opeth", "bathory", "master", "death", "slayer"].includes(n),
   isLabel: (n) => n === "nuclear blast",
-  country: (n) =>
-    ({
-      spain: "Spain",
-      espana: "Spain",
-      japan: "Japan",
-      japon: "Japan",
-      "estados unidos": "United States",
-      grecia: "Greece",
-      alemania: "Germany",
-    })[n] ?? null,
+  country: (n) => COUNTRIES[n] ?? null,
 };
 const rules = (question: string, model: Query = { intent: "bands" }): Query => refine(question, model, vocab);
 
@@ -329,6 +338,39 @@ describe("refine: the question's own cues", () => {
       groupBy: "country",
       name: "Death",
       nameMatch: "exact",
+    });
+  });
+
+  it("reads review counts, ratings and low-end sorts (owner's reports)", () => {
+    expect(rules("Bandas de heavy metal de Reino Unido que tengan entre 5 y 10 reseñas?")).toEqual({
+      intent: "bands",
+      country: "United Kingdom",
+      genre: ["heavy"],
+      reviewsMin: 5,
+      reviewsMax: 10,
+    });
+    expect(rules("Bandas de heavy metal de reino unido con valoración media más baja?")).toEqual({
+      intent: "bands",
+      country: "United Kingdom",
+      genre: ["heavy"],
+      sort: "lowestRating",
+    });
+    expect(rules("Banda de doom metal con menos reseñas?")).toEqual({
+      intent: "bands",
+      genre: ["doom"],
+      sort: "fewestReviews",
+    });
+    expect(reviewsIn("con mas de 20 resenas")).toEqual({ min: 21 });
+    expect(reviewsIn("que no tienen resenas")).toEqual({ max: 0 });
+    expect(reviewsIn("with at least 3 reviews")).toEqual({ min: 3 });
+    expect(reviewsIn("con una resena")).toEqual({ min: 1, max: 1 });
+    expect(ratingIn("con una valoracion media superior al 90%")).toEqual({ min: 90 });
+    expect(ratingIn("rated below 40%")).toEqual({ max: 40 });
+    expect(ratingIn("las 20 bandas mas antiguas")).toBeNull();
+    expect(rules("Bandas de thrash con más de 2000 reseñas")).toEqual({
+      intent: "bands",
+      genre: ["thrash"],
+      reviewsMin: 2001,
     });
   });
 

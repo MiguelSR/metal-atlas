@@ -113,8 +113,11 @@ export class OracleEngine {
         return this.albums(query, rows);
       case "lineup":
         return this.lineups(query, rows);
-      default:
-        return { kind: "bands", total: rows.length, rows: this.sorted(rows, query).slice(0, limit) };
+      default: {
+        // some sorts leave bands out (no year, no reviews): the total counts what is listed
+        const sorted = this.sorted(rows, query);
+        return { kind: "bands", total: sorted.length, rows: sorted.slice(0, limit) };
+      }
     }
   }
 
@@ -158,6 +161,16 @@ export class OracleEngine {
     }
     if (query.label) inDict("label", [query.label]);
     if (query.unsigned) tests.push((row) => data.label[row] === -1);
+    if (query.reviewsMin !== undefined || query.reviewsMax !== undefined) {
+      const min = query.reviewsMin ?? 0;
+      const max = query.reviewsMax ?? Infinity;
+      tests.push((row) => data.reviews[row]! >= min && data.reviews[row]! <= max);
+    }
+    if (query.ratingMin !== undefined || query.ratingMax !== undefined) {
+      const min = query.ratingMin ?? 0;
+      const max = query.ratingMax ?? 100;
+      tests.push((row) => data.reviews[row]! > 0 && data.rating[row]! >= min && data.rating[row]! <= max);
+    }
     if (query.name) {
       const name = fold(query.name);
       const how = query.nameMatch ?? "exact";
@@ -262,6 +275,13 @@ export class OracleEngine {
         return rows
           .filter((row) => reviews[row]! >= MIN_RATED_REVIEWS)
           .sort((a, b) => rating[b]! - rating[a]! || reviews[b]! - reviews[a]!);
+      case "lowestRating":
+        return rows
+          .filter((row) => reviews[row]! >= MIN_RATED_REVIEWS)
+          .sort((a, b) => rating[a]! - rating[b]! || reviews[b]! - reviews[a]!);
+      case "fewestReviews":
+        // among bands with reviews: most bands have none, which says nothing
+        return rows.filter((row) => reviews[row]! > 0).sort((a, b) => reviews[a]! - reviews[b]! || a - b);
       case "oldest":
         return rows.filter((row) => year[row]! > 0).sort((a, b) => year[a]! - year[b]! || a - b);
       case "newest":

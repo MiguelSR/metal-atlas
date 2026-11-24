@@ -5,7 +5,7 @@
 
 export const INTENTS = ["bands", "count", "top", "albums", "lineup", "unsupported"] as const;
 export const GROUPS = ["country", "genre", "label", "year", "decade", "location", "status"] as const;
-export const SORTS = ["relevance", "reviews", "rating", "oldest", "newest"] as const;
+export const SORTS = ["relevance", "reviews", "rating", "oldest", "newest", "fewestReviews", "lowestRating"] as const;
 export const STATUSES = ["Active", "On hold", "Split-up", "Unknown", "Changed name", "Disputed"] as const;
 export const ALBUM_TYPES = ["Full-length", "EP", "Demo", "Single", "Live album", "Compilation", "Split"] as const;
 export const NAME_MATCHES = ["exact", "prefix", "contains", "suffix"] as const;
@@ -51,6 +51,12 @@ export interface Query {
   albumType?: AlbumType;
   releasedFrom?: number;
   releasedTo?: number;
+  /** number of reviews, both ends included */
+  reviewsMin?: number;
+  reviewsMax?: number;
+  /** average review rating in %, both ends included (only bands with reviews) */
+  ratingMin?: number;
+  ratingMax?: number;
   groupBy?: Group;
   sort?: Sort;
   limit?: number;
@@ -87,6 +93,10 @@ export const QUERY_SCHEMA = {
     albumType: { type: "string", enum: ALBUM_TYPES },
     releasedFrom: { type: "integer" },
     releasedTo: { type: "integer" },
+    reviewsMin: { type: "integer" },
+    reviewsMax: { type: "integer" },
+    ratingMin: { type: "integer" },
+    ratingMax: { type: "integer" },
     groupBy: { type: "string", enum: GROUPS },
     sort: { type: "string", enum: SORTS },
     limit: { type: "integer" },
@@ -128,6 +138,11 @@ export function parseQuery(output: unknown): Query {
   for (const key of YEAR_FIELDS) {
     const value = cleanYear(r[key]);
     if (value) query[key] = value;
+  }
+  for (const key of ["reviewsMin", "reviewsMax", "ratingMin", "ratingMax"] as const) {
+    const value = r[key];
+    const top = key.startsWith("rating") ? 100 : 100000;
+    if (typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= top) query[key] = value;
   }
   const genre = cleanWords(r.genre);
   if (genre) query.genre = genre;

@@ -23,7 +23,8 @@ Fields (omit those not needed):
 - member: a musician's name. role: instrument in English ("guitars", "bass", "drums", "vocals", "keyboards").
 - album: words of an album title. albumType: "Full-length", "EP", "Demo", "Single", "Live album", "Compilation", "Split". releasedFrom, releasedTo: release years.
 - groupBy: "country", "genre", "label", "year", "decade", "location", "status".
-- sort: "relevance" (most popular first, the default), "reviews", "rating", "oldest", "newest".
+- sort: "relevance" (most popular first, the default), "reviews", "rating", "oldest", "newest", "fewestReviews", "lowestRating".
+- reviewsMin, reviewsMax: number of reviews ("between 5 and 10 reviews", "no reviews" is reviewsMax 0). ratingMin, ratingMax: average rating in %.
 - limit: how many results (default 10).
 - missing, for "unsupported": "lyrics", "similar" (similar bands or what fans listen to), "covers" (album artwork), "past_members" (former members or the order they joined), "tracks" (songs), "other".
 

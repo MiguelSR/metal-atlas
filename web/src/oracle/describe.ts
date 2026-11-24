@@ -29,6 +29,12 @@ export function describeQuery(query: Query, t: Translate, countryName: (country:
   if (query.albumType) chips.push(`${field.albumType}: ${query.albumType}`);
   if (query.releasedFrom || query.releasedTo)
     chips.push(t("oReleased", query.releasedFrom ?? null, query.releasedTo ?? null));
+  if (query.reviewsMin !== undefined || query.reviewsMax !== undefined) {
+    chips.push(t("oReviewsRange", query.reviewsMin ?? null, query.reviewsMax ?? null));
+  }
+  if (query.ratingMin !== undefined || query.ratingMax !== undefined) {
+    chips.push(t("oRatingRange", query.ratingMin ?? null, query.ratingMax ?? null));
+  }
   if (query.sort && query.sort !== "relevance") chips.push(t("oSorts")[query.sort]);
   if (query.limit) chips.push(t("oLimit", query.limit));
   return chips;

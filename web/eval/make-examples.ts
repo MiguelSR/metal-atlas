@@ -278,6 +278,40 @@ export function makeExamples(
       sort: "oldest",
     });
     const word = pick(NAME_WORDS);
+    add(
+      "reviews-range",
+      `Bandas de ${gEs} de ${cEs} que tengan entre 5 y 10 reseñas`,
+      `${cap(gEn)} bands from ${cEn} with between 5 and 10 reviews`,
+      { intent: "bands", genre, country, reviewsMin: 5, reviewsMax: 10 },
+    );
+    add("reviews-more", `Bandas de ${gEs} con más de 20 reseñas`, `${cap(gEn)} bands with more than 20 reviews`, {
+      intent: "bands",
+      genre,
+      reviewsMin: 21,
+    });
+    add(
+      "no-reviews",
+      `¿Cuántas bandas de ${gEs} de ${cEs} no tienen reseñas?`,
+      `How many ${gEn} bands from ${cEn} have no reviews?`,
+      { intent: "count", genre, country, reviewsMax: 0 },
+    );
+    add(
+      "lowest-rated",
+      `Bandas de ${gEs} de ${cEs} con la valoración media más baja`,
+      `The lowest rated ${gEn} bands from ${cEn}`,
+      { intent: "bands", genre, country, sort: "lowestRating" },
+    );
+    add("fewest-reviews", `Banda de ${gEs} con menos reseñas`, `The least reviewed ${gEn} bands`, {
+      intent: "bands",
+      genre,
+      sort: "fewestReviews",
+    });
+    add(
+      "rating-above",
+      `Bandas de ${gEs} con una valoración media superior al 90%`,
+      `${cap(gEn)} bands rated above 90%`,
+      { intent: "bands", genre, ratingMin: 90 },
+    );
     add("unsigned", `Las bandas de ${gEs} sin sello con más reseñas`, `The most reviewed unsigned ${gEn} bands`, {
       intent: "bands",
       genre,

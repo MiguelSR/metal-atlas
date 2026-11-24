@@ -224,7 +224,21 @@ function english(nf: (n: number) => string) {
       rating: "best rated",
       oldest: "oldest",
       newest: "newest",
+      fewestReviews: "fewest reviews (with some)",
+      lowestRating: "lowest rated",
     },
+    oReviewsRange: (a: number | null, b: number | null) =>
+      b === 0
+        ? "no reviews"
+        : a !== null && b !== null
+          ? a === b
+            ? `${a} ${plural(a, "review", "reviews")}`
+            : `${a}–${b} reviews`
+          : a !== null
+            ? `${a} or more reviews`
+            : `${b} reviews or fewer`,
+    oRatingRange: (a: number | null, b: number | null) =>
+      a !== null && b !== null ? `rated ${a}–${b}%` : a !== null ? `rated ${a}% or more` : `rated ${b}% or less`,
     oField: {
       band: "band",
       genre: "genre",
@@ -507,7 +521,25 @@ function spanish(nf: (n: number) => string): Messages {
       rating: "mejor valoradas",
       oldest: "más antiguas",
       newest: "más recientes",
+      fewestReviews: "menos reseñadas (con alguna)",
+      lowestRating: "peor valoradas",
     },
+    oReviewsRange: (a, b) =>
+      b === 0
+        ? "sin reseñas"
+        : a !== null && b !== null
+          ? a === b
+            ? `${a} ${plural(a, "reseña", "reseñas")}`
+            : `${a}–${b} reseñas`
+          : a !== null
+            ? `${a} reseñas o más`
+            : `${b} reseñas o menos`,
+    oRatingRange: (a, b) =>
+      a !== null && b !== null
+        ? `valoración ${a}–${b} %`
+        : a !== null
+          ? `valoración ${a} % o más`
+          : `valoración ${b} % o menos`,
     oField: {
       band: "banda",
       genre: "género",

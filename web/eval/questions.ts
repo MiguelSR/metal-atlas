@@ -188,4 +188,23 @@ export const QUESTIONS: [question: string, expected: Partial<Query>][] = [
     { intent: "bands", genre: ["doom"], pureGenre: true, sort: "oldest" },
   ],
   ["primer grupo de puro doom", { intent: "bands", genre: ["doom"], pureGenre: true, sort: "oldest" }],
+  // owner's reports, 2026-11-24 (review counts, ratings, low-end sorts)
+  [
+    "Bandas de heavy metal de Reino Unido que tengan entre 5 y 10 reseñas?",
+    { intent: "bands", genre: ["heavy"], country: "United Kingdom", reviewsMin: 5, reviewsMax: 10 },
+  ],
+  [
+    "Bandas de heavy metal de reino unido con valoración media más baja?",
+    { intent: "bands", genre: ["heavy"], country: "United Kingdom", sort: "lowestRating" },
+  ],
+  ["Banda de doom metal con menos reseñas?", { intent: "bands", genre: ["doom"], sort: "fewestReviews" }],
+  [
+    "bandas de black metal noruegas sin reseñas",
+    { intent: "bands", genre: ["black"], country: "Norway", reviewsMax: 0 },
+  ],
+  ["thrash bands rated above 90%", { intent: "bands", genre: ["thrash"], ratingMin: 90 }],
+  [
+    "worst rated power metal bands from Italy",
+    { intent: "bands", genre: ["power"], country: "Italy", sort: "lowestRating" },
+  ],
 ];
