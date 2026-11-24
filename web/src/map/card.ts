@@ -7,9 +7,8 @@ import { searchUrl } from "../search-links";
 import type { AppState } from "../state";
 import { TOP_GENRES, inRange, searchGenres } from "../stats";
 import type { GenreColors } from "./colors";
+import { pageSlice, pagerHtml } from "./pager";
 import type { Point } from "./world-map";
-
-const LIST_SIZE = 10;
 
 interface View {
   country: string;
@@ -106,18 +105,26 @@ export class Card {
       return `<button class="g" data-g="${genre}"><span class="rk">${rank}</span><span class="nm">${highlight(name, firstWord)}<span class="go">→</span></span><span class="ct">${state.nf(bands)}</span>
         <span class="track"><span class="fill" style="width:${Math.max(1, (bands / top) * 100).toFixed(1)}%;background:${color}"></span></span></button>`;
     };
+    let page = 0;
     const drawList = (): void => {
       const typed = (this.genreQueries.get(key) ?? "").trim();
       const query = fold(typed);
       if (!stats.bands) {
         list.innerHTML = `<div class="empty">${t("noBandsIn", esc(state.unitName(country, region)))}</div>`;
       } else if (!query) {
+        const shown = pageSlice(page, stats.genres.length);
+        page = shown.page;
         list.innerHTML =
           `<div class="eyebrow">${t("topGenres")}</div>` +
           stats.genres
-            .slice(0, TOP_GENRES)
-            .map(([g, n], i) => row(g, n, i + 1, ""))
-            .join("");
+            .slice(shown.start, shown.end)
+            .map(([g, n], i) => row(g, n, shown.start + i + 1, ""))
+            .join("") +
+          this.pager(shown.start, shown.end, stats.genres.length);
+        this.wirePager(list, (step) => {
+          page += step;
+          drawList();
+        });
       } else {
         const found = searchGenres(stats.genres, state.genres, query);
         list.innerHTML = found.length
@@ -135,6 +142,7 @@ export class Card {
     if (input) {
       input.oninput = () => {
         this.genreQueries.set(key, input.value);
+        page = 0;
         drawList();
         this.place();
       };
@@ -181,32 +189,62 @@ export class Card {
 
     const file = await this.countryFile(country);
     if (this.view !== view) return; // another card was opened meanwhile
-    const rows = file.rows
-      .filter(
-        (r) =>
-          r[7].includes(genre) &&
-          inRange(r[3], state.years) &&
-          (region == null || r[10].includes(region)) &&
-          (!state.query || fold(r[1]).includes(state.query)),
-      )
-      .slice(0, LIST_SIZE);
+    const rows = file.rows.filter(
+      (r) =>
+        r[7].includes(genre) &&
+        inRange(r[3], state.years) &&
+        (region == null || r[10].includes(region)) &&
+        (!state.query || fold(r[1]).includes(state.query)),
+    );
     const statusNames = t("status");
-    const items = rows.map(([id, name, slug, year, status, labelIndex, genreText, , reviews, avg], i) => {
+    const item = (
+      [id, name, slug, year, status, labelIndex, genreText, , reviews, avg]: CountryFile["rows"][number],
+      rank: number,
+    ): string => {
       const label = labelIndex >= 0 ? file.labels[labelIndex] : null;
       const statusChip = status
         ? `<span class="chip ${status === 1 ? "on" : status === 3 ? "off" : ""}">${statusNames[status]}</span>`
         : "";
-      return `<div class="b"><span class="rk">${i + 1}</span><div style="min-width:0">
+      return `<div class="b"><span class="rk">${rank}</span><div style="min-width:0">
           <div class="nmr"><a href="${bandUrl(id, name, slug)}" target="_blank" rel="noopener">${esc(name)}</a>${this.player.button(name, id)}</div>
           <div class="ln">${esc(genreText)}${label ? " · " + esc(label) : ""}</div>
           <div class="chips">${year ? `<span class="chip">${t("formedY", year)}</span>` : ""}${statusChip}${reviews ? `<span class="chip rv">${t("reviews", reviews, avg)}</span>` : ""}</div></div></div>`;
-    });
-    this.element.innerHTML =
-      head +
-      `<div class="pop-b">${items.length ? `<div class="eyebrow">${t("topRel", items.length)}</div>` + items.join("") : `<div class="empty">${t("noGenreBands")}</div>`}</div>
+    };
+    const draw = (page: number): void => {
+      const shown = pageSlice(page, rows.length);
+      const items = rows.slice(shown.start, shown.end).map((r, i) => item(r, shown.start + i + 1));
+      this.element.innerHTML =
+        head +
+        `<div class="pop-b">${items.length ? `<div class="eyebrow">${t("topRel", rows.length)}</div>` + items.join("") + this.pager(shown.start, shown.end, rows.length) : `<div class="empty">${t("noGenreBands")}</div>`}</div>
       <div class="foot">${t("relFoot")}</div>`;
-    wire();
-    this.place();
+      wire();
+      this.wirePager(this.element, (step) => {
+        draw(shown.page + step);
+        this.element.querySelector(".pop-b")?.scrollTo(0, 0);
+      });
+      this.place();
+    };
+    draw(0);
+  }
+
+  private pager(start: number, end: number, total: number): string {
+    const t = this.state.t;
+    return pagerHtml(
+      start,
+      end,
+      total,
+      { range: (from, to, total) => t("pageRange", from, to, total), prev: t("pagePrev"), next: t("pageNext") },
+      this.state.nf,
+    );
+  }
+
+  private wirePager(root: HTMLElement, go: (step: number) => void): void {
+    root.querySelectorAll<HTMLButtonElement>(".pager [data-page]").forEach((b) => {
+      b.onclick = (e) => {
+        e.stopPropagation();
+        go(Number(b.dataset.page));
+      };
+    });
   }
 
   /** Next to where the user clicked; on phones, docked at the bottom (CSS). */

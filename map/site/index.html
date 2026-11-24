@@ -141,6 +141,10 @@ svg#map:active { cursor: grabbing; }
 .pop-b { overflow-y: auto; padding: 8px 8px 12px; min-height: 0; }
 .eyebrow { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 6px 8px 4px; }
 .empty { color: var(--muted); padding: 16px 8px; }
+.pager { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 8px 2px; color: var(--muted); font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.pager button { display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--rule); border-radius: 50%; background: none; color: var(--ink); font: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
+.pager button:hover { color: var(--gold); border-color: var(--gold); }
+.pager button:disabled { opacity: .3; cursor: default; color: var(--ink); border-color: var(--rule); }
 .g { display: grid; grid-template-columns: 18px 1fr auto; gap: 3px 8px; align-items: center; width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; padding: 7px 8px; border-radius: 4px; cursor: pointer; }
 .g:hover { background: var(--land); }
 .g .rk { font-family: var(--mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }

@@ -51,6 +51,7 @@ Static site (https://miguelsr.js.org/metal-atlas/, repo `MiguelSR/metal-atlas`, 
 **Map**
 - Card counts link to MA's advanced search with the active filters. Grouped regions (Spain, Italy, France) are translated to MA's English location names in `REGION_EN` (index.html); UK and Slovenia regions are statistical, so no region link.
 - Genre search in the card sorts by band count (relevance), not alphabetically.
+- **Card lists are paged, 10 per page** (owner, 2026-11-24: ten results left them "wanting to keep reading"): genres and bands, ‹ › with "11–20 of 345" (`map/pager.ts`). The genre search results stay unpaged (already short).
 
 **The Oracle** (owner's idea, 2026-11-24: "ask anything", running in the browser with Chrome's Prompt API and WebLLM as fallback; an intro panel that warns it is slow, and example questions)
 - **On phones too, without a model** (decided 2026-11-24 once the rules alone scored like the model): Gemini Nano is desktop-only and WebLLM's 1.3 GB is too much; `isMobile()` (≤ 899 px or a coarse pointer) skips model detection and shows a phone intro (`oIntroMobile`, warns about ~7 MB). It was desktop-only at first.
