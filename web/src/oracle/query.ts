@@ -23,6 +23,8 @@ export interface Query {
   band?: string;
   /** words that must all appear in the genre, e.g. ["melodic", "death"] */
   genre?: string[];
+  /** only bands whose every genre is that genre ("pure doom": Doom, Epic Doom… but not Doom/Death or Doom Rock) */
+  pureGenre?: boolean;
   /** country name in English, as in Metal Archives */
   country?: string;
   /** city, state or region */
@@ -61,6 +63,7 @@ export const QUERY_SCHEMA = {
     intent: { type: "string", enum: INTENTS },
     band: { type: "string" },
     genre: { type: "array", items: { type: "string" } },
+    pureGenre: { type: "boolean" },
     country: { type: "string" },
     location: { type: "string" },
     status: { type: "string", enum: STATUSES },
@@ -118,6 +121,7 @@ export function parseQuery(output: unknown): Query {
   }
   const genre = cleanWords(r.genre);
   if (genre) query.genre = genre;
+  if (genre && r.pureGenre === true) query.pureGenre = true;
   const themes = cleanWords(r.themes);
   if (themes) query.themes = themes;
   if (isOneOf(STATUSES, r.status)) query.status = r.status;

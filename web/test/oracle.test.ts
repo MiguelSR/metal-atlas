@@ -137,6 +137,11 @@ describe("engine", () => {
     expect(run({ intent: "albums", album: "reign in blood" })).toMatchObject({ total: 1, bandsWithoutData: 4 });
   });
 
+  it("keeps only bands of a pure genre when asked", () => {
+    expect(run({ intent: "bands", genre: ["death"] })).toMatchObject({ rows: [2, 3] });
+    expect(run({ intent: "bands", genre: ["death"], pureGenre: true })).toMatchObject({ rows: [3] });
+  });
+
   it("tells themes from their anti- versions", () => {
     expect(run({ intent: "bands", themes: ["christian"] })).toMatchObject({ rows: [3] });
     expect(run({ intent: "bands", themes: ["anti-christian"] })).toMatchObject({ rows: [4] });
@@ -245,6 +250,25 @@ describe("refine: the question's own cues", () => {
       releasedFrom: 1980,
       releasedTo: 1989,
     });
+  });
+
+  it("reads 'pure' genres", () => {
+    expect(rules("primer grupo de puro doom")).toEqual({
+      intent: "bands",
+      genre: ["doom"],
+      pureGenre: true,
+      sort: "oldest",
+    });
+    expect(rules("Primer grupo de doom metal sin mezclar con otros géneros en España")).toEqual({
+      intent: "bands",
+      country: "Spain",
+      genre: ["doom"],
+      pureGenre: true,
+      sort: "oldest",
+    });
+    expect(rules("bands that play only thrash")).toEqual({ intent: "bands", genre: ["thrash"], pureGenre: true });
+    expect(rules("Primer grupo de doom metal en España")).not.toHaveProperty("pureGenre");
+    expect(rules("Las bandas de gothic metal puro más antiguas de Países Bajos").intent).toBe("bands");
   });
 
   it("knows what the data can't answer", () => {

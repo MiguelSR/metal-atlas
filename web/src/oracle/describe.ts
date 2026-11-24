@@ -10,6 +10,7 @@ export function describeQuery(query: Query, t: Translate, countryName: (country:
   if (query.groupBy) chips.push(t("oGroupBy")[query.groupBy]);
   if (query.band) chips.push(`${field.band}: ${query.band}`);
   if (query.genre) chips.push(`${field.genre}: ${query.genre.join(" + ")}`);
+  if (query.pureGenre) chips.push(t("oPure"));
   if (query.country) chips.push(`${field.country}: ${countryName(query.country)}`);
   if (query.location) chips.push(`${field.location}: ${query.location}`);
   if (query.status) chips.push(t("status")[STATUSES.indexOf(query.status) + 1]!);

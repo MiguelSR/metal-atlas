@@ -154,7 +154,7 @@ function english(nf: (n: number) => string) {
     lineupHdr: (h: string) => `(${h.toLowerCase()})`,
     // ---------- Oracle ----------
     modeOracle: "👁️ Oracle",
-    oracleTitle: "Ask the data questions in plain words (desktop only)",
+    oracleTitle: "Ask the data questions in plain words",
     oTitle: "The Oracle",
     oLead: "Ask about the 200,000 bands in Metal Archives, in English or Spanish.",
     oHow: "How does it work?",
@@ -166,6 +166,14 @@ function english(nf: (n: number) => string) {
       "<b>What it doesn't know (yet):</b> lyrics, songs, former members, similar bands or album covers.",
       "<b>It can misread a question.</b> Each answer shows how it was understood, so you can rephrase it.",
     ],
+    oIntroMobile: [
+      "<b>On phones it works without AI.</b> It understands questions like the examples: genres, countries, cities, years, themes, labels, lineups and albums. On a computer with Chrome it can also use an AI.",
+      "<b>It downloads about 7 MB</b> of band data when you open it (mind your data plan); after that, answers are instant.",
+      "<b>What it knows:</b> genre, country, city, formation year, status, lyrical themes, label and reviews of every band; the current lineup and the discography of the 6,000 best known.",
+      "<b>What it doesn't know (yet):</b> lyrics, songs, former members, similar bands or album covers.",
+      "<b>It can misread a question.</b> Each answer shows how it was understood, so you can rephrase it.",
+    ],
+    oMobile: "Without AI on phones: it understands questions like the examples.",
     oGotIt: "Got it",
     oPh: "e.g. Which country has the most black metal bands?",
     oAsk: "Ask",
@@ -238,6 +246,7 @@ function english(nf: (n: number) => string) {
           ? `released ${a} or later`
           : `released ${b} or earlier`,
     oLimit: (n: number) => `top ${n}`,
+    oPure: "that genre only, unmixed",
     oBands: (n: number) => `${nf(n)} ${plural(n, "band", "bands")}`,
     oAlbums: (n: number) => `${nf(n)} ${plural(n, "album", "albums")}`,
     oShowing: (n: number) => `showing the first ${nf(n)}`,
@@ -421,7 +430,7 @@ function spanish(nf: (n: number) => string): Messages {
             : `(${h.toLowerCase()})`,
     // ---------- Oracle ----------
     modeOracle: "👁️ Oráculo",
-    oracleTitle: "Hazle preguntas a los datos con tus palabras (solo en ordenador)",
+    oracleTitle: "Hazle preguntas a los datos con tus palabras",
     oTitle: "El Oráculo",
     oLead: "Pregunta lo que quieras sobre las 200.000 bandas de Metal Archives, en español o en inglés.",
     oHow: "¿Cómo funciona?",
@@ -433,6 +442,14 @@ function spanish(nf: (n: number) => string): Messages {
       "<b>Qué no sabe (todavía):</b> letras, canciones, antiguos miembros, bandas parecidas ni portadas.",
       "<b>Puede entender mal la pregunta.</b> Cada respuesta muestra cómo la ha entendido, para que puedas reformularla.",
     ],
+    oIntroMobile: [
+      "<b>En el móvil funciona sin IA.</b> Entiende preguntas como las de los ejemplos: géneros, países, ciudades, años, temáticas, sellos, formaciones y discos. En un ordenador con Chrome puede usar además una IA.",
+      "<b>Descarga unos 7 MB</b> de datos de las bandas al abrirlo (ojo si vas con datos móviles); después, las respuestas son instantáneas.",
+      "<b>Qué sabe:</b> género, país, ciudad, año de formación, estado, temática de las letras, sello y reseñas de todas las bandas; la formación actual y la discografía de las 6.000 más conocidas.",
+      "<b>Qué no sabe (todavía):</b> letras, canciones, antiguos miembros, bandas parecidas ni portadas.",
+      "<b>Puede entender mal la pregunta.</b> Cada respuesta muestra cómo la ha entendido, para que puedas reformularla.",
+    ],
+    oMobile: "Sin IA en el móvil: entiende preguntas como las de los ejemplos.",
     oGotIt: "Entendido",
     oPh: "p. ej. ¿Qué país tiene más bandas de black metal?",
     oAsk: "Preguntar",
@@ -505,6 +522,7 @@ function spanish(nf: (n: number) => string): Messages {
           ? `publicado en ${a} o después`
           : `publicado en ${b} o antes`,
     oLimit: (n) => `top ${n}`,
+    oPure: "solo ese género, sin mezclas",
     oBands: (n) => `${nf(n)} ${plural(n, "banda", "bandas")}`,
     oAlbums: (n) => `${nf(n)} ${plural(n, "disco", "discos")}`,
     oShowing: (n) => `se muestran las ${nf(n)} primeras`,

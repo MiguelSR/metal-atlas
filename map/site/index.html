@@ -317,8 +317,7 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
 .hist li span:last-child { font-family: var(--mono); color: var(--muted); }
 .grow { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .gloading { color: var(--muted); font-family: var(--mono); font-size: 12px; padding: 24px 0; text-align: center; }
-/* ---------- the Oracle (desktop only) ---------- */
-@media (max-width: 899px), (pointer: coarse) { #omode, .oracle { display: none !important; } }
+/* ---------- the Oracle (an AI on desktop; the rules alone on phones) ---------- */
 body.oracle-on .tools, body.oracle-on .legend, body.oracle-on .zoom, body.oracle-on .results, body.oracle-on .pop,
 body.oracle-on .tip, body.oracle-on .credits { display: none !important; }
 body.oracle-on .np { z-index: 5; }
@@ -408,12 +407,29 @@ body.oracle-on .np { z-index: 5; }
 .omembers { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 5px; font-size: 14px; }
 .olineup + .olineup { margin-top: 12px; }
 @media (prefers-reduced-motion: reduce) { .ospin { animation: none; } }
+@media (max-width: 640px) {
+  .oracle { padding: 0; place-items: stretch; }
+  .ocard { border-radius: 0; border-left: 0; border-right: 0; padding: 16px 16px 28px; gap: 12px; min-height: 100%; box-sizing: border-box; align-content: start; }
+  .obanner { margin: -16px -16px 0; padding: 16px; gap: 12px; flex-wrap: wrap; border-radius: 0; }
+  .oeye { width: 64px; height: 64px; }
+  .obt h2 { font-size: 34px; }
+  .obt p { font-size: 13px; }
+  .obanner .olink { order: 3; flex-basis: 100%; text-align: left; }
+  .ointro { padding: 12px; }
+  .ointro ul { padding-left: 16px; font-size: 13.5px; }
+  .oform input { font-size: 16px; } /* no zoom on focus in iOS */
+  .oq { font-size: 16px; }
+  .ometa .otook { margin-left: 0; flex-basis: 100%; }
+  .titlerow { flex-wrap: wrap; gap: 6px 8px; }
+  .titlerow .mode { padding: 3px 8px; }
+  .obig { font-size: 38px; }
+}
 </style>
 
 <div class="app">
   <header>
     <div>
-      <div class="titlerow"><h1>Metal Atlas</h1><button class="mode" id="mode" aria-pressed="false" title="Switch between the map and the guessing game">🎮 Game</button><button class="mode" id="omode" aria-pressed="false" title="Ask the data questions in plain words (desktop only)">👁️ Oracle</button><button class="mode lang" id="lang"><b>EN</b> · ES</button></div>
+      <div class="titlerow"><h1>Metal Atlas</h1><button class="mode" id="mode" aria-pressed="false" title="Switch between the map and the guessing game">🎮 Game</button><button class="mode" id="omode" aria-pressed="false" title="Ask the data questions in plain words">👁️ Oracle</button><button class="mode lang" id="lang"><b>EN</b> · ES</button></div>
       <div class="sub" id="sub">Loading…</div>
     </div>
     <div class="tools">

@@ -72,6 +72,16 @@ export function roleNeedle(role: string): string {
   return ROLE_WORDS[word] ?? word.replace(/s$/, "");
 }
 
+/** Words that name a genre family: a genre that has one besides the asked one is a mix, not pure. */
+const GENRE_FAMILIES = new Set(
+  (
+    "death black thrash doom heavy power speed folk gothic sludge stoner grindcore grind groove symphonic industrial " +
+    "metalcore deathcore hardcore crust punk progressive rock ambient drone noise electronic electronica pop jazz " +
+    "blackened deathened viking pagan crossover nu post djent shoegaze mathcore goregrind powerviolence avant garde " +
+    "experimental neofolk darkwave synth dungeon fusion blues grunge alternative rap hip hop trap psychedelic"
+  ).split(" "),
+);
+
 const decade = (year: number): string => `${Math.floor(year / 10) * 10}s`;
 
 export class OracleEngine {
@@ -121,6 +131,10 @@ export class OracleEngine {
       tests.push((row) => set.has(row));
     }
     if (query.genre) inDict("genre", query.genre);
+    if (query.genre && query.pureGenre) {
+      const pure = this.pureGenres(query.genre);
+      tests.push((row) => data.g[row]!.length > 0 && data.g[row]!.every((g) => pure[g] === 1));
+    }
     if (query.country) {
       const country = this.index.countryIndex(query.country);
       if (country === null) {
@@ -159,6 +173,26 @@ export class OracleEngine {
     const rows: number[] = [];
     for (let row = 0; row < this.index.size; row++) if (tests.every((test) => test(row))) rows.push(row);
     return rows;
+  }
+
+  /**
+   * Which normalized genres are purely the asked genre: they contain every word and no other genre family
+   * ("Epic Doom Metal" and "Funeral Doom" are pure doom; "Blackened Doom", "Doom Rock" and "Drone Doom" are not).
+   */
+  private pureGenres(words: string[]): Uint8Array {
+    const asked = words.map(fold);
+    const names = this.index.data.genres;
+    const pure = new Uint8Array(names.length);
+    names.forEach((name, i) => {
+      const parts = fold(name)
+        .replace(/[()]/g, " ")
+        .split(/[\s/,-]+/)
+        .filter(Boolean);
+      const hasAll = asked.every((word) => parts.some((part) => part.startsWith(word)));
+      const other = parts.some((part) => GENRE_FAMILIES.has(part) && !asked.some((word) => part.startsWith(word)));
+      if (hasAll && !other) pure[i] = 1;
+    });
+    return pure;
   }
 
   /** Rows named exactly `name` (folded); if none, names starting with it. */

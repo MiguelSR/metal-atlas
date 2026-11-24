@@ -12,6 +12,7 @@ Fields (omit those not needed):
 - intent: "bands" (list bands), "count" (how many bands), "top" (rank groups of bands, needs groupBy), "albums" (discography), "lineup" (members of a band), "unsupported" (the data below can't answer it).
 - band: a band's exact name.
 - genre: list of genre words that must appear, in English, e.g. ["thrash"], ["melodic","death"], ["black"], ["doom"], ["power"], ["folk"].
+- pureGenre: true when the question wants that genre alone, not mixed with others ("pure doom", "only thrash").
 - country: country in English as in Metal Archives (e.g. "Spain", "United States", "United Kingdom", "Germany", "Korea, South").
 - location: city, state or region, in its usual English or local spelling (e.g. "Murcia", "Bay Area", "Florida", "Bergen").
 - status: "Active", "Split-up", "On hold", "Changed name", "Unknown", "Disputed".

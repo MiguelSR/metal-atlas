@@ -228,6 +228,13 @@ export function makeExamples(
       country,
       sort: "oldest",
     });
+    add("pure", `Las bandas de ${gEs} puro más antiguas de ${cEs}`, `The oldest pure ${gEn} bands from ${cEn}`, {
+      intent: "bands",
+      genre,
+      pureGenre: true,
+      country,
+      sort: "oldest",
+    });
     add("best", `Las mejores bandas de ${gEs} de ${cEs}`, `The best rated ${gEn} bands from ${cEn}`, {
       intent: "bands",
       genre,

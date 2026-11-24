@@ -21,6 +21,12 @@ import { refine } from "./refine";
 const INTRO_KEY = "ma-oracle-intro";
 const EXAMPLE_COUNT = 8;
 
+/**
+ * Phones and tablets get no model: Gemini Nano is desktop-only, WebLLM's 1.3 GB is too much for them, and the rules
+ * alone score the same (see CLAUDE.md).
+ */
+const isMobile = (): boolean => matchMedia("(max-width: 899px), (pointer: coarse)").matches;
+
 /** `n` different items, at random. */
 export function pickRandom<T>(items: readonly T[], n: number, random: () => number = Math.random): T[] {
   const pool = [...items];
@@ -34,6 +40,7 @@ type ModelState =
   | { kind: "checking" }
   | { kind: "offer"; availability: Availability } // a button to download or load a model
   | { kind: "none" }
+  | { kind: "mobile" } // phones and tablets: no model, the rules alone
   | { kind: "loading"; progress: number }
   | { kind: "ready" }
   | { kind: "error"; message: string };
@@ -126,6 +133,11 @@ export class OracleView {
   // ---------- model ----------
 
   private async checkModel(): Promise<void> {
+    if (isMobile()) {
+      this.model = { kind: "mobile" };
+      this.render();
+      return;
+    }
     this.available = await availability();
     if (this.available.kind === "none") this.model = { kind: "none" };
     else if (this.available.kind === "chrome" && this.available.ready) {
@@ -218,7 +230,7 @@ export class OracleView {
     const t = this.t;
     const typed = this.element.querySelector<HTMLInputElement>("#oq")?.value ?? "";
     const intro = this.showIntro
-      ? `<section class="ointro"><h3>${t("oIntroTitle")}</h3><ul>${t("oIntro")
+      ? `<section class="ointro"><h3>${t("oIntroTitle")}</h3><ul>${t(isMobile() ? "oIntroMobile" : "oIntro")
           .map((line) => `<li>${line}</li>`)
           .join("")}</ul><button class="gbtn primary" data-o="intro">${t("oGotIt")}</button></section>`
       : "";
@@ -264,6 +276,9 @@ export class OracleView {
       }
       case "none":
         lines.push(t("oNoModel"));
+        break;
+      case "mobile":
+        lines.push(t("oMobile"));
         break;
       case "loading":
         lines.push(

@@ -301,7 +301,8 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   if (/\bmas\b|\bmost\b|predomin|mayor|more|top\b|ranking|clasificacion/.test(q)) {
     for (const [i, token] of tokens.entries()) {
       const hit = GROUP_WORDS.find(([pattern]) => pattern.test(token));
-      const unitedStates = tokens[i + 1] === "unidos" || tokens[i - 1] === "united";
+      // part of a country's name, not a grouping: "Estados Unidos", "Países Bajos", "United States"
+      const unitedStates = ["unidos", "bajos", "arabes"].includes(tokens[i + 1] ?? "") || tokens[i - 1] === "united";
       if (hit && !unitedStates && !(hit[1] === "year" && /anos? \d/.test(q))) {
         group = hit[1];
         break;
@@ -426,7 +427,19 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
     if (!GENRE_WORDS.has(word) || named.some((name) => name.includes(token))) continue;
     if (!genre.includes(word)) genre.push(word);
   }
-  if (genre.length) query.genre = genre;
+  if (genre.length) {
+    query.genre = genre;
+    // "pure doom", "doom sin mezclar", "only doom": every genre of the band is that one
+    const only = new RegExp(`\\b(?:solo|solamente|only|just)\\s+(?:de\\s+)?(?:${genre.join("|")})`);
+    if (
+      /\bpur[oa]s?\b|\bpurist|sin mezcla|sin mezclar|sin otros generos|unicamente|exclusivamente|\bpurely\b|\bpure\b|unmixed|strictly|nothing but|no other genres?/.test(
+        q,
+      ) ||
+      only.test(q)
+    ) {
+      query.pureGenre = true;
+    }
+  }
 
   // ---------- status, years, sort, limit ----------
   if (query.intent !== "lineup" && query.intent !== "albums") {
