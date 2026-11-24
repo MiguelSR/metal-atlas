@@ -11,6 +11,7 @@ import type { PreviewPlayer } from "../player";
 import type { AppState } from "../state";
 import { type OracleFile, OracleIndex } from "./data";
 import { describeQuery } from "./describe";
+import { eyeSvg } from "./eye";
 import { type Answer, OracleEngine, type Result } from "./engine";
 import { type Availability, type Translator, availability, chromeTranslator, webLlmTranslator } from "./models";
 import { type Query, STATUSES, parseQuery } from "./query";
@@ -203,8 +204,9 @@ export class OracleView {
       .map((q) => `<button type="button" class="oex" data-o="example" ${disabled}>${esc(q)}</button>`)
       .join("");
     this.element.innerHTML = `<div class="ocard">
-      <div class="ohead"><h2>${t("oTitle")}</h2><button class="olink" data-o="intro">${t("oHow")}</button></div>
-      <p class="gtx">${t("oLead")}</p>
+      <div class="obanner">${eyeSvg()}
+        <div class="obt"><h2>${t("oTitle")}</h2><p>${t("oLead")}</p></div>
+        <button class="olink" data-o="intro">${t("oHow")}</button></div>
       ${intro}
       <form class="gform oform"><input id="oq" autocomplete="off" placeholder="${esc(t("oPh"))}" aria-label="${esc(t("oTitle"))}" ${disabled}>
         <button class="gbtn primary" ${disabled}>${t("oAsk")}</button></form>

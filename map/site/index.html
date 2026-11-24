@@ -326,8 +326,33 @@ body.oracle-on .np { z-index: 5; }
   background: color-mix(in srgb, var(--ground) 92%, transparent); padding: 24px 16px 48px; }
 .ocard { width: 100%; max-width: 760px; background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
   box-shadow: 0 18px 50px rgba(0,0,0,.5); padding: 22px 24px; display: grid; gap: 14px; }
-.ohead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.ohead h2 { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1; margin: 0; }
+/* banner: the all-seeing eye over a starry, candle-lit night */
+.obanner { position: relative; display: flex; align-items: center; gap: 18px; margin: -22px -24px 0; padding: 22px 24px 20px;
+  border-radius: 8px 8px 0 0; border-bottom: 1px solid color-mix(in srgb, var(--gold) 30%, var(--rule)); overflow: hidden;
+  background:
+    radial-gradient(1px 1px at 12% 22%, #fff8 50%, transparent), radial-gradient(1px 1px at 28% 78%, #fff6 50%, transparent),
+    radial-gradient(1.5px 1.5px at 46% 18%, #fff7 50%, transparent), radial-gradient(1px 1px at 63% 64%, #fff5 50%, transparent),
+    radial-gradient(1.5px 1.5px at 78% 28%, #fff8 50%, transparent), radial-gradient(1px 1px at 88% 74%, #fff6 50%, transparent),
+    radial-gradient(1px 1px at 95% 12%, #fff5 50%, transparent), radial-gradient(1px 1px at 36% 42%, #fff4 50%, transparent),
+    radial-gradient(ellipse 60% 120% at 10% 50%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 70%),
+    radial-gradient(ellipse 80% 90% at 100% 0%, #3a1d4a66, transparent 70%),
+    linear-gradient(180deg, #120f17, var(--card)); }
+.obt { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.obt h2 { font-family: var(--display); font-weight: 400; font-size: 46px; line-height: 1; margin: 0; color: var(--gold);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--gold) 45%, transparent); }
+.obt p { margin: 0; color: var(--muted); line-height: 1.45; }
+.obanner .olink { align-self: flex-start; }
+.oeye { flex: none; width: 104px; height: 104px; overflow: visible; }
+.oeye .oe-rays line { stroke: var(--gold); stroke-width: 1.4; stroke-linecap: round; opacity: .55; }
+.oeye .oe-rays { transform-origin: 64px 66px; animation: oe-spin 60s linear infinite; }
+.oeye .oe-tri { fill: color-mix(in srgb, var(--ground) 70%, transparent); stroke: var(--gold); stroke-width: 2.2; stroke-linejoin: round; }
+.oeye .oe-white { fill: #e9e1cc; stroke: var(--gold); stroke-width: 1.6; }
+.oeye .oe-glow { animation: oe-pulse 4s ease-in-out infinite; }
+.oeye .oe-eye { transform-origin: 64px 72px; animation: oe-blink 7s ease-in-out infinite; }
+@keyframes oe-spin { to { transform: rotate(360deg); } }
+@keyframes oe-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@keyframes oe-blink { 0%, 95%, 100% { transform: scaleY(1); } 97.5% { transform: scaleY(.08); } }
+@media (prefers-reduced-motion: reduce) { .oeye .oe-rays, .oeye .oe-glow, .oeye .oe-eye { animation: none; } }
 .olink { background: none; border: 0; padding: 0; color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer;
   text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
 .olink:hover { color: var(--gold); }
@@ -386,7 +411,7 @@ body.oracle-on .np { z-index: 5; }
 <div class="app">
   <header>
     <div>
-      <div class="titlerow"><h1>Metal Atlas</h1><button class="mode" id="mode" aria-pressed="false" title="Switch between the map and the guessing game">Game</button><button class="mode" id="omode" aria-pressed="false" title="Ask the data questions in plain words (desktop only)">Oracle</button><button class="mode lang" id="lang"><b>EN</b> · ES</button></div>
+      <div class="titlerow"><h1>Metal Atlas</h1><button class="mode" id="mode" aria-pressed="false" title="Switch between the map and the guessing game">🎮 Game</button><button class="mode" id="omode" aria-pressed="false" title="Ask the data questions in plain words (desktop only)">👁️ Oracle</button><button class="mode lang" id="lang"><b>EN</b> · ES</button></div>
       <div class="sub" id="sub">Loading…</div>
     </div>
     <div class="tools">
