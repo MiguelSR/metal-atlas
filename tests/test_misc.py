@@ -4,7 +4,7 @@ import pytest
 
 from metal_atlas import __main__ as cli
 from metal_atlas import net
-from metal_atlas.bundle import MissingAppScript, bundle, wrap_document
+from metal_atlas.bundle import MissingAppScript, bundle, versioned_script, wrap_document
 from metal_atlas.data import public_records
 from metal_atlas.jsonio import read_json, write_json
 
@@ -33,6 +33,13 @@ def test_bundle_copies_data_and_wraps_the_page(tmp_path):
     (site / "app.js").write_text("")
     assert bundle(site, public) == 3
     assert (public / "index.html").read_text().startswith("<!doctype html>")
+
+
+def test_app_script_is_versioned_by_its_content():
+    page = '<script type="module" src="app.js"></script>'
+    one, two = versioned_script(page, b"a"), versioned_script(page, b"b")
+    assert one.startswith('<script type="module" src="app.js?v=') and one != two
+    assert versioned_script(page, b"a") == one
 
 
 def test_json_roundtrip(tmp_path):

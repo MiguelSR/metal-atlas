@@ -4,11 +4,13 @@ site/index.html has no <html>, <head> or <body>: it was first written for claude
 Static hosts serve files as they are, so the page gets wrapped in a full HTML document here. The data files are
 hard-linked, not copied (no extra disk space).
 
-The front end (app.js) must be built first: npm run build --prefix web.
+The front end (app.js) must be built first: npm run build --prefix web. The page asks for it as app.js?v=<hash of the
+file>, so browsers fetch the new code after each deploy instead of a cached copy (GitHub Pages caches for 10 minutes).
 
 Usage: python3 -m metal_atlas bundle
 """
 
+import hashlib
 import os
 import shutil
 from pathlib import Path
@@ -36,6 +38,12 @@ class MissingAppScript(RuntimeError):
     """map/site/app.js does not exist: the TypeScript front end was not built."""
 
 
+def versioned_script(page: str, script: bytes) -> str:
+    """The page with its app.js reference made unique to this build (a cache-busting query string)."""
+    digest = hashlib.sha256(script).hexdigest()[:10]
+    return page.replace(f'src="{APP_SCRIPT}"', f'src="{APP_SCRIPT}?v={digest}"')
+
+
 def bundle(site: Path, public: Path) -> int:
     """Rebuilds ``public`` from ``site``. Returns the number of files."""
     if not (site / APP_SCRIPT).exists():
@@ -45,6 +53,7 @@ def bundle(site: Path, public: Path) -> int:
     shutil.rmtree(public, ignore_errors=True)
     shutil.copytree(site, public, copy_function=os.link, ignore=shutil.ignore_patterns("index.html", ".*"))
     page = (site / "index.html").read_text(encoding="utf-8")
+    page = versioned_script(page, (site / APP_SCRIPT).read_bytes())
     (public / "index.html").write_text(wrap_document(page), encoding="utf-8")
     return sum(len(files) for _, _, files in os.walk(public))
 

@@ -84,6 +84,7 @@ Static site (https://miguelsr.js.org/metal-atlas/, repo `MiguelSR/metal-atlas`, 
 - `make_netlify.py`/`map/netlify` and the scripts in `map/*.py`, `scraper/*.py` no longer exist (replaced by `metal_atlas/`); old notes may mention them.
 - The daily job and a local `data push` can overwrite each other: don't push data while the job runs.
 - The mode buttons live in `main.ts` (`setMode`): `GameView.show` / `OracleView.show` only show or hide their view.
+- **Browser caches after a deploy**: GitHub Pages serves with `max-age=600`, and an open tab keeps running the code it loaded. The owner once reported fixed questions "still failing" right after a deploy (the live site was fine). `bundle` now requests `app.js?v=<content hash>`, so a reload always gets the new code; an open tab still needs a reload. Check the live site before chasing such a report.
 - `gh run watch` on a just-triggered run: wait a few seconds for it to appear.
 
 ## Checking changes
