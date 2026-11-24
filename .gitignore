@@ -21,6 +21,8 @@ scraper/pages/
 scraper/members/
 scraper/itunes/
 scraper/disco/
+scraper/discographies.jsonl
+scraper/discographies.log
 map/reviews_pages/
 map/reviews_new/
 map/geo_dl/

@@ -34,6 +34,11 @@ def discography_url(band_id: int) -> str:
     return f"{BASE}/band/discography/id/{band_id}/tab/all"
 
 
+def upcoming_url(start: int = 0) -> str:
+    """One page (100 rows) of upcoming releases: [band link, album link, type, genre, date, added]."""
+    return f"{BASE}/release/ajax-upcoming/json/1?sEcho=1&iDisplayStart={start}&iDisplayLength=100"
+
+
 def advanced_search_url(params: dict, start: int = 0, length: int = 200) -> str:
     """Advanced band search (JSON). Blank yearCreationFrom/To include bands without a formation year."""
     query = {

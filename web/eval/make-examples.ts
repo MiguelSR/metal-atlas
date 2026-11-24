@@ -6,7 +6,7 @@
 
 import { countryNamer } from "../src/countries";
 import { fold } from "../src/format";
-import { type OracleFile, OracleIndex } from "../src/oracle/data";
+import { type AlbumsFile, type OracleFile, OracleIndex } from "../src/oracle/data";
 import { type Answer, OracleEngine } from "../src/oracle/engine";
 import type { Query } from "../src/oracle/query";
 import { refine } from "../src/oracle/refine";
@@ -177,10 +177,12 @@ function satisfying(answer: Answer, query: Query): boolean {
 /** `debug`: also report every rejected question (misread, or with an unsatisfying answer). */
 export function makeExamples(
   file: OracleFile,
+  albums: AlbumsFile,
   debug = false,
   perTemplate = 30,
 ): Record<Lang, string[]> & { report: string[] } {
   const index = new OracleIndex(file);
+  index.setAlbums(albums);
   const engine = new OracleEngine(index);
   const { data } = index;
   const next = random(42);

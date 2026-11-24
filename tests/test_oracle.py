@@ -25,16 +25,16 @@ def test_dictionary_numbers_values_and_skips_empty():
 
 
 def test_oracle_data_is_columnar_by_relevance_with_game_extras(tmp_path):
-    members, disco = tmp_path / "m", tmp_path / "d"
+    members = tmp_path / "m"
     write_cached(members, 2, {"h": "Current", "m": [["Ana", "Drums"]]})
-    write_cached(disco, 2, [[7, "Demo I", "Demo", 1986]])
+    albums = {2: [[7, "Demo I", "Demo", 1986]]}
     bands = [band(1, "Uno", 0.1, label="Big"), band(2, "Dos", 0.9, location=None, year=None)]
-    data = oracle_data(bands, {2: [4, 300]}, members, disco)
+    data = oracle_data(bands, {2: [4, 300]}, members, albums.get)
     assert data["name"] == ["Dos", "Uno"]
     assert data["year"] == [0, 1985]
     assert data["location"] == [-1, 0] and data["dicts"]["location"] == ["Murcia"]
     assert data["label"] == [-1, 0] and data["dicts"]["label"] == ["Big"]
     assert data["reviews"] == [4, 0] and data["rating"] == [75, 0]
     assert data["lineups"] == {0: ["Current", [["Ana", "Drums"]]]}
-    assert data["albums"] == {0: [[7, "Demo I", "Demo", 1986]]}
+    assert data["albums"] == [[[7, "Demo I", "Demo", 1986]], 0]  # one item per row; 0 = not known
     assert data["status"] == [1, 1] and data["countries"] == ["Spain"] and data["country"] == [[0], [0]]

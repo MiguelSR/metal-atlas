@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { translator } from "../src/i18n";
 import { type OracleFile, OracleIndex } from "../src/oracle/data";
 import { describeQuery } from "../src/oracle/describe";
-import { OracleEngine, roleNeedle } from "../src/oracle/engine";
+import { OracleEngine, needsAlbums, roleNeedle } from "../src/oracle/engine";
 import { EXAMPLES } from "../src/oracle/examples";
 import { pickRandom } from "../src/oracle/oracle-view";
 import { type Query, extractJson, parseQuery } from "../src/oracle/query";
@@ -52,17 +52,24 @@ function oracleFile(): OracleFile {
         ],
       ],
     },
-    albums: {
-      "1": [
-        [1, "Show No Mercy", "Full-length", 1983],
-        [2, "Haunting the Chapel", "EP", 1984],
-        [3, "Reign in Blood", "Full-length", 1986],
-      ],
-    },
   };
 }
 
 const index = new OracleIndex(oracleFile());
+index.setAlbums({
+  v: 1,
+  a: [
+    0,
+    [
+      [1, "Show No Mercy", "Full-length", 1983],
+      [2, "Haunting the Chapel", "EP", 1984],
+      [3, "Reign in Blood", "Full-length", 1986],
+    ],
+    0,
+    0,
+    0,
+  ],
+});
 const engine = new OracleEngine(index);
 const run = (query: Query) => engine.run(query).answer;
 
@@ -181,6 +188,12 @@ describe("engine", () => {
   it("tells themes from their anti- versions", () => {
     expect(run({ intent: "bands", themes: ["christian"] })).toMatchObject({ rows: [3] });
     expect(run({ intent: "bands", themes: ["anti-christian"] })).toMatchObject({ rows: [4] });
+  });
+
+  it("knows which queries need the discographies", () => {
+    expect(needsAlbums({ intent: "albums", band: "Slayer" })).toBe(true);
+    expect(needsAlbums({ intent: "bands", albumType: "EP" })).toBe(true);
+    expect(needsAlbums({ intent: "bands", genre: ["doom"] })).toBe(false);
   });
 
   it("searches an unknown country as a place", () => {

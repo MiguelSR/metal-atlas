@@ -43,7 +43,8 @@ STATE_FILES = [
     paths.DISCO_DIR,
 ]
 RELEASE_NOTES = "Data for the site and the update steps, replaced on every update. See metal_atlas/data.py."
-SITE_FILES = ["bands.json", "index.json", "game.json", "previews.json", "oracle.json", "c", "r"]  # inside map/site
+# inside map/site
+SITE_FILES = ["bands.json", "index.json", "game.json", "previews.json", "oracle.json", "oracle-albums.json", "c", "r"]
 
 
 def public_records(bands: list[dict]) -> list[dict]:

@@ -23,6 +23,7 @@ SCRAPER_DIR = ROOT / "scraper"
 SEARCH_PAGES_DIR = SCRAPER_DIR / "pages"  # raw advanced-search responses
 MEMBERS_DIR = SCRAPER_DIR / "members"  # lineup, photo, logo and review passage per game band
 DISCO_DIR = SCRAPER_DIR / "disco"  # Metal Archives discography per game band
+DISCOGRAPHIES = SCRAPER_DIR / "discographies.jsonl"  # discography of every band (see discographies.py)
 ITUNES_DIR = SCRAPER_DIR / "itunes"  # iTunes verification per game band
 
 DIST_DIR = ROOT / "dist"  # packed data snapshots (see `data`)

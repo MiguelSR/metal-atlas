@@ -9,11 +9,11 @@ import { bandUrl, esc } from "../format";
 import type { Lang, Translate } from "../i18n";
 import type { PreviewPlayer } from "../player";
 import type { AppState } from "../state";
-import { type OracleFile, OracleIndex } from "./data";
+import { type AlbumsFile, type OracleFile, OracleIndex } from "./data";
 import { describeQuery } from "./describe";
 import { EXAMPLES } from "./examples";
 import { eyeSvg } from "./eye";
-import { type Answer, OracleEngine, type Result } from "./engine";
+import { type Answer, OracleEngine, type Result, needsAlbums } from "./engine";
 import { type Availability, type Translator, availability, chromeTranslator, webLlmTranslator } from "./models";
 import { type Query, STATUSES, parseQuery } from "./query";
 import { refine } from "./refine";
@@ -52,6 +52,8 @@ interface Asked {
   seconds?: number;
   by?: "chrome" | "webllm" | "rules";
   badModelAnswer?: boolean;
+  /** waiting for oracle-albums.json, the first time a question needs it */
+  loadingAlbums?: boolean;
   error?: string;
 }
 
@@ -80,6 +82,7 @@ export class OracleView {
   private examples: readonly string[] = [];
   private readonly asked: Asked[] = [];
   private loaded: { index: OracleIndex; engine: OracleEngine } | null = null;
+  private readonly loadAlbums = lazy(() => getJson<AlbumsFile>("oracle-albums.json"));
   private readonly load = lazy(async () => {
     const index = new OracleIndex(await getJson<OracleFile>("oracle.json"));
     return (this.loaded = { index, engine: new OracleEngine(index) });
@@ -188,6 +191,12 @@ export class OracleView {
         }
       }
       entry.query = refine(question, modelQuery, index);
+      if (needsAlbums(entry.query) && !index.hasAlbums) {
+        entry.loadingAlbums = true;
+        this.render();
+        index.setAlbums(await this.loadAlbums());
+        entry.loadingAlbums = false;
+      }
       entry.result = engine.run(entry.query);
       entry.seconds = (performance.now() - started) / 1000;
     } catch (error) {
@@ -301,7 +310,7 @@ export class OracleView {
     const head = `<div class="oq">${esc(a.question)}</div>`;
     if (a.error) return `<li class="oa">${head}<div class="oerr">${esc(a.error)}</div></li>`;
     if (!a.result || !a.query)
-      return `<li class="oa">${head}<div class="othink"><span class="ospin"></span>${t("oThinking")}</div></li>`;
+      return `<li class="oa">${head}<div class="othink"><span class="ospin"></span>${t(a.loadingAlbums ? "oLoadingAlbums" : "oThinking")}</div></li>`;
     const chips = describeQuery(a.query, t, this.state.countryName)
       .map((c) => `<span class="chip">${esc(c)}</span>`)
       .join("");

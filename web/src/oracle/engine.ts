@@ -90,6 +90,11 @@ const GENRE_FAMILIES = new Set(
 
 const decade = (year: number): string => `${Math.floor(year / 10) * 10}s`;
 
+/** Whether answering a query needs the discographies (oracle-albums.json). */
+export function needsAlbums(query: Query): boolean {
+  return query.intent === "albums" || !!(query.album ?? query.albumType ?? query.releasedFrom ?? query.releasedTo);
+}
+
 export class OracleEngine {
   constructor(private readonly index: OracleIndex) {}
 

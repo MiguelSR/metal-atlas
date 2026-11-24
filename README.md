@@ -190,6 +190,7 @@ iTunes ─────────verify───► scraper/itunes/, disco/ ─
 | 6 | `members` | For the 6,000 most relevant bands: lineup, photo, logo and a review passage without names. | ~3 h the first time |
 | 7 | `verify` | Looks up each game band on iTunes and confirms which artist is the right one by comparing albums (see [iTunes verification](#itunes-verification)). | ~20 h the first time (one call every 6 s) |
 | 8 | `game` | Puts everything together in `game.json` and `previews.json`. | seconds |
+| – | `discographies backfill` | Downloads the discography of every band (one page per band, ~5–6 days, resumable) into `scraper/discographies.jsonl`. | days (once) |
 | 9 | `oracle` | Writes `oracle.json`: every band in columns (dictionary-encoded texts) plus the lineups and discographies of the game bands. | ~10 s |
 | 10 | `bundle` | Builds `map/public`. | seconds |
 
@@ -439,6 +440,7 @@ Compact (arrays instead of objects) to keep them small.
 | `r/<n>.json` | Regions of one country: names, geometry (fills and borders) and the same genre × year summary per region. |
 | `bands.json` | Global index for the band search and the game: parallel columns `n` (names), `y` (years), `a` (active), `g` (genres), `l` (country + regions), `id`, `s` (non-standard slugs). Sorted by relevance. |
 | `oracle.json` | Parallel columns over every band, by relevance: `id`, `name`, `year`, `status`, `genre` / `location` / `themes` / `label` (indices into `dicts`), `g` (normalized genres), `country`, `reviews`, `rating`; `lineups` and `albums` keyed by row for the game bands. ~22 MB (~7 MB compressed), loaded only when the Oracle opens. See `metal_atlas/oracle.py`. |
+| `oracle-albums.json` | `a`: one item per row of `oracle.json`: `[[album id, title, type, year], …]`, or 0 when the discography isn't known. Loaded by the page only when a question needs albums. |
 | `game.json` | `levels`: 5 lists of indices. `b`: rows `[id, name, slug, year, countries, members, lineup header, photo, review, review %, logo, iTunes artist id, [albums], [[preview url, song, album, cover], …], location]`. Up to 5 songs per band, from different albums, with shortened URLs (`game` strips the common prefix, `index.html` puts it back). |
 
 ### Scraper caches

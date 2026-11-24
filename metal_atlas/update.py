@@ -6,7 +6,8 @@
   2. One request per new or changed band: its band page. New bands also get an exact-name search (the only place
      with their a.k.a.); game bands also refresh their lineup, photo, logo and discography. Bands whose page is gone
      (deleted) are removed.
-  3. Rebuild: regions -> build -> members + verify (bands new to the game) -> game -> bundle.
+  3. Rebuild: regions -> build -> members + verify (bands new to the game) -> game -> oracle (the publish workflow
+     then builds the front end and bundles the site).
 
 State: map/update_state.json = {"since": "YYYY-MM-DD HH:MM"} (Metal Archives server time).
 
@@ -20,7 +21,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
-from . import build, bundle, game, members, oracle, regions, verify
+from . import build, game, members, oracle, regions, verify
 from . import metal_archives as ma
 from . import paths
 from .jsonio import read_cached, read_json, write_cached, write_json
@@ -177,7 +178,7 @@ def rebuild() -> None:
         ("verify", verify.main, [str(game.GAME_BANDS), "2"]),
         ("game", game.main, []),
         ("oracle", oracle.main, []),
-        ("bundle", bundle.main, []),
+        # no `bundle`: it needs the compiled front end, which the publish workflow builds (pages.yml)
     ]
     for name, step, args in steps:
         print("->", name, *args, flush=True)

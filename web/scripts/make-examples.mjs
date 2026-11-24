@@ -24,7 +24,8 @@ await build({
 });
 const { makeExamples } = await import(pathToFileURL(out).href);
 const file = JSON.parse(await readFile(join(WEB, "..", "map", "site", "oracle.json"), "utf8"));
-const { es, en, report } = makeExamples(file, Boolean(process.env.DEBUG));
+const albums = JSON.parse(await readFile(join(WEB, "..", "map", "site", "oracle-albums.json"), "utf8"));
+const { es, en, report } = makeExamples(file, albums, Boolean(process.env.DEBUG));
 for (const line of report) console.log(line);
 const list = (items) => items.map((q) => `    ${JSON.stringify(q)},`).join("\n");
 await writeFile(

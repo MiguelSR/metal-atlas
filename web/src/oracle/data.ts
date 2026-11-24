@@ -26,7 +26,12 @@ export interface OracleFile {
   reviews: number[];
   rating: number[];
   lineups: Record<string, Lineup>;
-  albums: Record<string, Album[]>;
+}
+
+/** oracle-albums.json: one item per row of oracle.json, its albums or 0 when the discography isn't known. */
+export interface AlbumsFile {
+  v: number;
+  a: (Album[] | 0)[];
 }
 
 /** Other ways of naming Metal Archives countries (folded). */
@@ -168,8 +173,21 @@ export class OracleIndex implements Vocabulary {
     return this.data.lineups[row];
   }
 
+  private albumRows: (Album[] | 0)[] | null = null;
+
+  /** Adds the discographies (oracle-albums.json, loaded only when a question needs them). */
+  setAlbums(file: AlbumsFile): void {
+    this.albumRows = file.a;
+  }
+
+  get hasAlbums(): boolean {
+    return this.albumRows !== null;
+  }
+
+  /** A row's albums, or undefined when its discography isn't known (or not loaded). */
   albums(row: number): Album[] | undefined {
-    return this.data.albums[row];
+    const albums = this.albumRows?.[row];
+    return albums === 0 ? undefined : albums;
   }
 
   /** The dictionary value of a row's field, or "" when missing. */

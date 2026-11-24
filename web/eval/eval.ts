@@ -3,7 +3,7 @@
  * The page has a "start" button (creating a Chrome session can need a click) and writes its log into #__out.
  */
 
-import { type OracleFile, OracleIndex } from "../src/oracle/data";
+import { type AlbumsFile, type OracleFile, OracleIndex } from "../src/oracle/data";
 import { OracleEngine } from "../src/oracle/engine";
 import { type Translator, chromeTranslator, webLlmTranslator } from "../src/oracle/models";
 import { EXAMPLES } from "../src/oracle/examples";
@@ -32,6 +32,7 @@ async function run(): Promise<void> {
       : await chromeTranslator(progress);
   log(`model ready (${backend}) in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   const index = new OracleIndex((await (await fetch("oracle.json")).json()) as OracleFile);
+  index.setAlbums((await (await fetch("oracle-albums.json")).json()) as AlbumsFile);
   const engine = new OracleEngine(index);
   // "examples": a random sample of the generated examples, expected to read as they do without a model
   const questions: [string, Partial<Query>][] =

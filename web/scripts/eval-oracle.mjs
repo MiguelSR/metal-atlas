@@ -45,6 +45,7 @@ const files = {
   "/": ["text/html", PAGE],
   "/eval.js": ["text/javascript", bundle.outputFiles[0].text],
   "/oracle.json": ["application/json", await readFile(join(WEB, "..", "map", "site", "oracle.json"))],
+  "/oracle-albums.json": ["application/json", await readFile(join(WEB, "..", "map", "site", "oracle-albums.json"))],
 };
 const server = createServer((req, res) => {
   const file = files[new URL(req.url, "http://x").pathname];
