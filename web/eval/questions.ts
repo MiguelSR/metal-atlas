@@ -207,4 +207,19 @@ export const QUESTIONS: [question: string, expected: Partial<Query>][] = [
     "worst rated power metal bands from Italy",
     { intent: "bands", genre: ["power"], country: "Italy", sort: "lowestRating" },
   ],
+  // owner's reports, 2026-11-24 (themes ranking, lyric lines, "después del 2000")
+  [
+    "¿Cuál era la temática más habitual en las bandas de doom metal formadas en los años 80?",
+    { intent: "top", groupBy: "theme", genre: ["doom"], formedFrom: 1980, formedTo: 1989 },
+  ],
+  ['De quién es la letra "power and dominion are taken by the will"?', { intent: "unsupported", missing: "lyrics" }],
+  [
+    "¿Bandas de power metal formadas después del 2000 que hablen de dragoneS?¿",
+    { intent: "bands", genre: ["power"], formedFrom: 2001, themes: ["dragon"] },
+  ],
+  [
+    "What are the most common themes in Finnish folk metal?",
+    { intent: "top", groupBy: "theme", genre: ["folk"], country: "Finland" },
+  ],
+  ["bandas de thrash formadas a partir del 2010", { intent: "bands", genre: ["thrash"], formedFrom: 2010 }],
 ];

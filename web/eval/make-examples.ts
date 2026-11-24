@@ -279,6 +279,31 @@ export function makeExamples(
     });
     const word = pick(NAME_WORDS);
     add(
+      "theme-top",
+      `¿Cuál es la temática más habitual en las bandas de ${gEs} formadas en ${decadeEs(decade)}?`,
+      `What is the most common theme among ${gEn} bands formed in ${decadeEn(decade)}?`,
+      { intent: "top", groupBy: "theme", genre, ...years },
+    );
+    add(
+      "theme-top-country",
+      `¿Qué temas son los más comunes en el ${gEs} de ${cEs}?`,
+      `What are the most common themes in ${gEn} from ${cEn}?`,
+      {
+        intent: "top",
+        groupBy: "theme",
+        genre,
+        country,
+      },
+    );
+    const after = pick([1990, 1995, 2000, 2005, 2010]);
+    add(
+      "after-theme",
+      `Bandas de ${gEs} formadas después del ${after} que hablen de ${tEs}`,
+      `${cap(gEn)} bands formed after ${after} that sing about ${tEn}`,
+      { intent: "bands", genre, formedFrom: after + 1, themes: [themeOf(tEs)] },
+      { intent: "bands", genre, formedFrom: after + 1, themes: [themeOf(tEn)] },
+    );
+    add(
       "reviews-range",
       `Bandas de ${gEs} de ${cEs} que tengan entre 5 y 10 reseñas`,
       `${cap(gEn)} bands from ${cEn} with between 5 and 10 reviews`,

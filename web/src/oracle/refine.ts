@@ -189,10 +189,7 @@ const STATUS_CUES: [RegExp, Status][] = [
   [/cambi\w* (?:de|el|su) nombre|changed (?:their |its )?names?|renamed/, "Changed name"],
   [/en disputa|disputed/, "Disputed"],
   [/estado desconocido|unknown status|status unknown/, "Unknown"],
-  [
-    /separad|\bsplit\b|split-up|disuelt|ya no existen|desaparecid|inactiv|defunct|broke up|disbanded|no longer/,
-    "Split-up",
-  ],
+  [/separad|split-up|disuelt|ya no existen|desaparecid|inactiv|defunct|broke up|disbanded|no longer/, "Split-up"],
   [/en pausa|on hold|paron/, "On hold"],
   [/\bactiv|\bactive\b|siguen|still/, "Active"],
 ];
@@ -268,13 +265,15 @@ export function yearsIn(q: string): { from?: number; to?: number } | null {
     const from = century(m[1]!);
     return { from, to: from + 9 };
   }
-  m = /(?:despues de|after|later than|posteriores? a)\s+(?:el\s+)?(\d{4})/.exec(q);
+  // "después de 2000", "después del 2000", "posterior al año 2000", "after the year 2000"
+  const the = String.raw`(?:el\s+|ano\s+|el ano\s+|the year\s+|the\s+)?`;
+  m = new RegExp(String.raw`(?:despues\s+(?:de|del)|after|later than|posteriores?\s+(?:a|al))\s+${the}(\d{4})`).exec(q);
   if (m) return { from: Number(m[1]) + 1 };
-  m = /(?:desde|a partir de|since|from)\s+(?:el\s+)?(\d{4})/.exec(q);
+  m = new RegExp(String.raw`(?:desde|a partir\s+(?:de|del)|since|from)\s+${the}(\d{4})`).exec(q);
   if (m) return { from: Number(m[1]) };
-  m = /(?:antes de|before|earlier than|anteriores? a)\s+(?:el\s+)?(\d{4})/.exec(q);
+  m = new RegExp(String.raw`(?:antes\s+(?:de|del)|before|earlier than|anteriores?\s+(?:a|al))\s+${the}(\d{4})`).exec(q);
   if (m) return { to: Number(m[1]) - 1 };
-  m = /(?:hasta|until|up to)\s+(?:el\s+)?(\d{4})/.exec(q);
+  m = new RegExp(String.raw`(?:hasta|until|up to)\s+${the}(\d{4})`).exec(q);
   if (m) return { to: Number(m[1]) };
   m = /\b(19\d\d|20\d\d)\b/.exec(q);
   if (m) return { from: Number(m[1]), to: Number(m[1]) };
@@ -384,6 +383,14 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   const q = fold(question).replace(/[¿?¡!]/g, " ");
   const tokens = words(q);
 
+  // a line of lyrics: "¿de quién es la letra 'power and dominion…'?" (themes are "letras que hablen de…")
+  const quoted = /["“'«][^"”'»]{8,}["”'»]/.test(question);
+  if (
+    /\bla letra\b|\bletra de\b|whose lyrics|the lyrics? (?:that|which|of)|\bthe line\b|\bverso\b|\bestrofa\b/.test(q) ||
+    (quoted && /\bletras?\b|\blyrics?\b|\bline\b|\bverse\b|\bcanta\b|\bsings?\b|\bdice\b|\bsays?\b/.test(q))
+  ) {
+    return { intent: "unsupported", missing: "lyrics" };
+  }
   for (const [pattern, missing] of UNSUPPORTED) if (pattern.test(q)) return { intent: "unsupported", missing };
 
   // a ranking needs a grouping the question names ("which country…"); otherwise it is a list
@@ -399,9 +406,15 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
     );
   const albums = /\bdiscos?\b|\balbum|discografia\b|discography|\beps?\b|\bdemos?\b|\blps?\b/.test(q);
   const count = /cuant[oa]s|how many|number of|numero de/.test(q);
-  let group: Group | undefined;
+  // "la temática más habitual", "what themes are most common": a ranking of lyrical themes
+  let group: Group | undefined =
+    /\b(?:que|cual(?:es)?|which|what)\s+(?:(?:es|era|son|eran|is|was|are|were)\s+)?(?:(?:la|el|las|los|the)\s+)?(?:tematicas?|temas?|themes?|topics?)\b|\b(?:tematicas?|temas?|themes?|topics?)\s+(?:mas|most)\s+\w+|\b(?:most|mas)\s+(?:common|frequent|habitual(?:es)?|comun(?:es)?|frecuentes?|popular(?:es)?|repetid\w*|usad\w*)\s+(?:lyrical\s+)?(?:tematicas?|temas?|themes?|topics?)/.test(
+      q,
+    )
+      ? "theme"
+      : undefined;
   // "more" in lowercase only: "More Hate Productions" is a label, not a ranking
-  if (/\bmas\b|\bmost\b|predomin|mayor|top\b|ranking|clasificacion/.test(q) || /\bmore\b/.test(question)) {
+  if (!group && (/\bmas\b|\bmost\b|predomin|mayor|top\b|ranking|clasificacion/.test(q) || /\bmore\b/.test(question))) {
     for (const [i, token] of tokens.entries()) {
       const hit = GROUP_WORDS.find(([pattern]) => pattern.test(token));
       // part of a country's name, not a grouping: "Estados Unidos", "Países Bajos", "United States"
@@ -491,7 +504,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
       q,
     );
   // not in lineup or album questions ("¿Quién canta en Severe Torture?"), and never inside a name
-  const themed = cue !== null && query.intent !== "lineup" && query.intent !== "albums";
+  const themed = cue !== null && query.intent !== "lineup" && query.intent !== "albums" && query.groupBy !== "theme";
   let themeText = themed ? q.slice(cue.index) : "";
   for (const name of [query.band, query.album, query.label, query.member]) {
     if (name) themeText = themeText.replace(fold(name), " ");
@@ -514,7 +527,10 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   // ---------- places ----------
   const named = [query.band, query.album, query.label, query.member, query.name].filter(Boolean).map((n) => fold(n!));
   const outside = (value: string): boolean => !named.some((name) => name.includes(fold(value))) && !isTheme(value);
-  const countries = countriesIn(q, vocab).filter(outside);
+  // never inside a name: "American Line Productions" is not about the United States
+  let unnamed = q;
+  for (const name of named) unnamed = unnamed.replace(name, " ");
+  const countries = countriesIn(unnamed, vocab).filter(outside);
   if (countries.length) query.country = countries[0]!;
   else if (model.country && !vocab.country(model.country) && backed(q, model.country, 3)) {
     query.location = model.country; // a region named as a country ("Scotland")
@@ -567,7 +583,10 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
 
   // ---------- status, years, sort, limit ----------
   if (query.intent !== "lineup" && query.intent !== "albums") {
-    const status = STATUS_CUES.find(([pattern]) => pattern.test(q));
+    // lowercase "split" only: "Split" is also a city (Croatia)
+    const status =
+      STATUS_CUES.find(([pattern]) => pattern.test(q)) ??
+      (/\bsplit\b/.test(question) ? [/./, "Split-up" as const] : undefined);
     if (status) query.status = status[1];
   }
   // review counts and ratings ("entre 5 y 10 reseñas", "superior al 90%"); their numbers are not years

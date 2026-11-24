@@ -22,7 +22,7 @@ Fields (omit those not needed):
 - name, nameMatch: a band name to search, "exact" ("named Slayer"), "prefix" ("starting with Killer"), "contains", "suffix".
 - member: a musician's name. role: instrument in English ("guitars", "bass", "drums", "vocals", "keyboards").
 - album: words of an album title. albumType: "Full-length", "EP", "Demo", "Single", "Live album", "Compilation", "Split". releasedFrom, releasedTo: release years.
-- groupBy: "country", "genre", "label", "year", "decade", "location", "status".
+- groupBy: "country", "genre", "label", "year", "decade", "location", "status", "theme" (the most common lyrical themes).
 - sort: "relevance" (most popular first, the default), "reviews", "rating", "oldest", "newest", "fewestReviews", "lowestRating".
 - reviewsMin, reviewsMax: number of reviews ("between 5 and 10 reviews", "no reviews" is reviewsMax 0). ratingMin, ratingMax: average rating in %.
 - limit: how many results (default 10).

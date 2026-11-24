@@ -4,7 +4,7 @@
  */
 
 export const INTENTS = ["bands", "count", "top", "albums", "lineup", "unsupported"] as const;
-export const GROUPS = ["country", "genre", "label", "year", "decade", "location", "status"] as const;
+export const GROUPS = ["country", "genre", "label", "year", "decade", "location", "status", "theme"] as const;
 export const SORTS = ["relevance", "reviews", "rating", "oldest", "newest", "fewestReviews", "lowestRating"] as const;
 export const STATUSES = ["Active", "On hold", "Split-up", "Unknown", "Changed name", "Disputed"] as const;
 export const ALBUM_TYPES = ["Full-length", "EP", "Demo", "Single", "Live album", "Compilation", "Split"] as const;

@@ -163,6 +163,16 @@ describe("engine", () => {
     expect(run({ intent: "bands", sort: "fewestReviews" })).toMatchObject({ rows: [2, 3, 0, 1] });
   });
 
+  it("ranks lyrical themes term by term", () => {
+    expect(run({ intent: "top", groupBy: "theme", limit: 3 })).toMatchObject({
+      groups: [
+        { key: "War", count: 2 },
+        { key: "Death", count: 2 },
+        { key: "Satanism", count: 1 },
+      ],
+    });
+  });
+
   it("keeps only bands of a pure genre when asked", () => {
     expect(run({ intent: "bands", genre: ["death"] })).toMatchObject({ rows: [2, 3] });
     expect(run({ intent: "bands", genre: ["death"], pureGenre: true })).toMatchObject({ rows: [3] });
@@ -371,6 +381,39 @@ describe("refine: the question's own cues", () => {
       intent: "bands",
       genre: ["thrash"],
       reviewsMin: 2001,
+    });
+  });
+
+  it("ranks lyrical themes, spots lyric lines, reads 'después del 2000' (owner's reports)", () => {
+    expect(rules("¿Cuál era la temática más habitual en las bandas de doom metal formadas en los años 80?")).toEqual({
+      intent: "top",
+      groupBy: "theme",
+      genre: ["doom"],
+      formedFrom: 1980,
+      formedTo: 1989,
+    });
+    expect(rules("What are the most common themes in Japanese black metal?")).toEqual({
+      intent: "top",
+      groupBy: "theme",
+      country: "Japan",
+      genre: ["black"],
+    });
+    expect(rules('De quién es la letra "power and dominion are taken by the will"?')).toEqual({
+      intent: "unsupported",
+      missing: "lyrics",
+    });
+    expect(rules("Which band sings 'we are the children of the night'?").missing).toBe("lyrics");
+    expect(rules("¿Bandas de power metal formadas después del 2000 que hablen de dragoneS?¿")).toEqual({
+      intent: "bands",
+      themes: ["dragon"],
+      genre: ["power"],
+      formedFrom: 2001,
+    });
+    expect(yearsIn("a partir del ano 1995")).toEqual({ from: 1995 });
+    expect(yearsIn("antes del 1990")).toEqual({ to: 1989 });
+    expect(rules("Bandas de doom con temática satánica más reseñadas")).toMatchObject({
+      themes: ["satan"],
+      sort: "reviews",
     });
   });
 

@@ -217,6 +217,7 @@ function english(nf: (n: number) => string) {
       decade: "by decade",
       location: "by place",
       status: "by status",
+      theme: "by lyrical theme",
     },
     oSorts: {
       relevance: "most relevant",
@@ -514,6 +515,7 @@ function spanish(nf: (n: number) => string): Messages {
       decade: "por década",
       location: "por lugar",
       status: "por estado",
+      theme: "por temática",
     },
     oSorts: {
       relevance: "más relevantes",

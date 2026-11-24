@@ -65,6 +65,7 @@ export class OracleIndex implements Vocabulary {
   private readonly countryByName = new Map<string, number>();
   private readonly foldedNames: string[];
   private readonly folded = new Map<keyof OracleFile["dicts"], string[]>();
+  private readonly terms = new Map<number, string[]>();
 
   constructor(readonly data: OracleFile) {
     this.size = data.id.length;
@@ -147,6 +148,20 @@ export class OracleIndex implements Vocabulary {
       if (pattern.test(value)) hits[i] = 1;
     });
     return hits;
+  }
+
+  /** The separate terms of a row's lyrical themes ("War, Death (early); Satanism (later)" -> War, Death, Satanism). */
+  themeTerms(row: number): string[] {
+    const i = this.data.themes[row]!;
+    if (i < 0) return [];
+    let terms = this.terms.get(i);
+    if (!terms) {
+      terms = this.data.dicts.themes[i]!.split(/[,;/()]|\band\b/)
+        .map((term) => term.trim().replace(/\.$/, ""))
+        .filter((term) => term && !/^(early|later|mid|various)$/i.test(term));
+      this.terms.set(i, terms);
+    }
+    return terms;
   }
 
   lineup(row: number): Lineup | undefined {

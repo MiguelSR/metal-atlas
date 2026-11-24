@@ -294,6 +294,7 @@ export class OracleEngine {
   private groups(rows: number[], query: Query): { key: string; count: number }[] {
     const { data } = this.index;
     const counts = new Map<string, number>();
+    const shown = new Map<string, string>();
     const add = (key: string): void => {
       if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
     };
@@ -310,6 +311,14 @@ export class OracleEngine {
           break;
         case "location":
           add(this.index.text("location", row));
+          break;
+        case "theme":
+          // one count per term, case-insensitive ("Death" and "death" together), shown as first written
+          for (const term of this.index.themeTerms(row)) {
+            const key = fold(term);
+            if (!shown.has(key)) shown.set(key, term.charAt(0).toUpperCase() + term.slice(1));
+            add(shown.get(key)!);
+          }
           break;
         case "year":
           if (data.year[row]) add(String(data.year[row]));
