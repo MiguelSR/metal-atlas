@@ -35,6 +35,8 @@ export function translatePage(t: Translate, lang: Lang): void {
   attr($("np"), "aria-label", t("playerAl"));
   attr($("mode"), "title", t("modeTitle"));
   text($("mode"), t("modeGame"));
+  attr($("omode"), "title", t("oracleTitle"));
+  text($("omode"), t("modeOracle"));
   const credits = document.querySelector(".credits");
   if (credits) {
     credits.innerHTML = credits.innerHTML

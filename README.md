@@ -24,7 +24,7 @@ It is a static site: `index.html`, a TypeScript front end compiled into `app.js`
 
 ## What the site does
 
-The page has **two modes**, switched with the small button next to the title (**Game** / **← Map**). Map mode is the default.
+The page has **three modes**, switched with the small buttons next to the title (**Game**, **Oracle**; the active one turns into **← Map**). Map mode is the default. The Oracle only appears on computers (wide screens with a mouse).
 
 ### Map mode
 
@@ -65,6 +65,18 @@ The page has **two modes**, switched with the small button next to the title (**
 
 - **Sound check** before starting, with a "Test sound" button (a synthesized guitar chord), because many players did not realize music was supposed to play.
 
+### The Oracle (questions in plain words, desktop only)
+
+Ask about the bands in English or Spanish: *"Which country has the most black metal bands?"*, *"Thrash bands from Murcia formed in the 80s"*, *"Who plays drums in Slayer?"*, *"Bathory's first album"*, *"Bands that sing about Tolkien"*.
+
+- **Everything runs in the browser.** A small language model turns the question into a structured query (JSON); the page runs it on `oracle.json`. No server, no API key, and questions don't leave the computer.
+- **Models:** Chrome's built-in **Gemini Nano** (Prompt API, Chrome 148+ on desktop; Chrome downloads it once, ~4 GB) or, in other browsers with WebGPU, **Qwen3.5-2B** through **WebLLM** (~1.3 GB from Hugging Face, cached; 1–2 minutes to load on each visit). Nothing is downloaded until the viewer presses the button, except Gemini Nano when Chrome already has it. Without a model, the rules alone read the question (see below).
+- **The model only translates, and the question has the last word.** Small models invent filters nobody asked for (a country, a genre, a sort) and miss plain cues, so `refine` (web/src/oracle/refine.ts) reads the explicit cues with rules (years and decades, status, "how many", "which country… most", lineups, albums, the oldest/best rated…) and keeps what the model adds only when the question backs it. The model's strength is translating names, places and themes ("Nueva Orleans" -> New Orleans, "guerra" -> war).
+- **An intro panel** explains this the first time (slow at first, what it knows and what it doesn't); "How does it work?" shows it again. Example questions are one click away.
+- **Every answer shows how the question was understood** (chips) and how long it took, with which model.
+- **What it can answer:** lists of bands (by genre words, country, place, formation years, status, lyrical themes, label, member), counts, rankings (by country, genre, label, place, year, decade, status), sorted by relevance, reviews, rating or age; the current lineup and the discography of the ~6,000 game bands. **What it can't (yet):** lyrics, songs, former members, similar bands, covers: it says so instead of guessing.
+- **Quality**, measured with `npm run eval --prefix web` (headless Chrome, 72 questions in `web/eval/`): on questions written after the rules (an honest test), Gemini Nano + rules got 17/20 right; Gemini Nano alone 9/20; the rules alone 17/20. Gemini Nano takes ~1.4 s per question, Qwen3.5-2B ~6 s.
+
 ### Language
 
 The interface is in **English and Spanish**. It follows the browser's language and can be switched with the **EN · ES** button (the choice is remembered). Country names are translated with the browser's `Intl` API.
@@ -100,6 +112,7 @@ The interface is in **English and Spanish**. It follows the browser's language a
 │   ├── members.py                 game clues: lineup, photo, logo, review passage
 │   ├── verify.py                  iTunes matching
 │   ├── game.py                    game.json and previews.json
+│   ├── oracle.py                  oracle.json, the data the Oracle answers from
 │   ├── bundle.py                  map/site -> map/public (ready to publish)
 │   ├── update.py                  incremental update (what the daily job runs)
 │   ├── data.py                    pull / push the data from / to the `data` release
@@ -116,8 +129,11 @@ The interface is in **English and Spanish**. It follows the browser's language a
 │   │   ├── countries.ts, format.ts, search-links.ts, icons.ts
 │   │   ├── itunes.ts, player.ts     previews (verified or live search) and the map's ▶ player
 │   │   ├── map/                     world map (d3), legend, country/region card, band search, header controls
-│   │   └── game/                    rules (pure), clues, sound check, the game view
-│   └── test/                      Vitest suite
+│   │   ├── game/                    rules (pure), clues, sound check, the game view
+│   │   └── oracle/                  query language, prompt, models (Gemini Nano / WebLLM), refine rules, engine, view
+│   ├── test/                      Vitest suite
+│   ├── eval/                      Oracle evaluation questions (questions.ts, holdout.ts) and the in-browser runner
+│   └── scripts/eval-oracle.mjs    runs the evaluation in headless Chrome
 ├── map/                         <- site and map data
 │   ├── site/                      the website: index.html (in git) + generated JSON (in the data release)
 │   │   ├── index.html               the page: HTML + CSS (loads app.js)
@@ -128,6 +144,7 @@ The interface is in **English and Spanish**. It follows the browser's language a
 │   │   ├── r/<n>.json               regions of each country (geometry + summaries)
 │   │   ├── game.json                game bands, with their clues and previews
 │   │   ├── previews.json            verified previews for the map's ▶ buttons
+│   │   ├── oracle.json              every band, columnar, plus game-band lineups and discographies (the Oracle)
 │   │   └── countries-50m.json       world map (TopoJSON)
 │   ├── public/                    what gets published (generated by `bundle`)
 │   ├── update_state.json          date of the last update (in git: the daily job commits it)
@@ -158,6 +175,7 @@ Metal Archives ──scrape──► pages/ ──merge──► ~/metal_archive
                                                                                       │
 Metal Archives ──members─► scraper/members/ ─┐                                        │
 iTunes ─────────verify───► scraper/itunes/, disco/ ─┴──── game ──► site/game.json, previews.json
+                                                     └─── oracle ──► site/oracle.json
                                                                                       │
                                                                      bundle ──► map/public/
 ```
@@ -172,7 +190,8 @@ iTunes ─────────verify───► scraper/itunes/, disco/ ─
 | 6 | `members` | For the 6,000 most relevant bands: lineup, photo, logo and a review passage without names. | ~3 h the first time |
 | 7 | `verify` | Looks up each game band on iTunes and confirms which artist is the right one by comparing albums (see [iTunes verification](#itunes-verification)). | ~20 h the first time (one call every 6 s) |
 | 8 | `game` | Puts everything together in `game.json` and `previews.json`. | seconds |
-| 9 | `bundle` | Builds `map/public`. | seconds |
+| 9 | `oracle` | Writes `oracle.json`: every band in columns (dictionary-encoded texts) plus the lineups and discographies of the game bands. | ~10 s |
+| 10 | `bundle` | Builds `map/public`. | seconds |
 
 Steps 1–3, 6 and 7 are only needed once. After that, `update` keeps the data current incrementally, every day on GitHub.
 
@@ -368,6 +387,7 @@ pre-commit run --all-files     # every check
 pytest                         # Python tests
 black metal_atlas tests        # format Python
 npm run check --prefix web     # front end: prettier --check, tsc, eslint, vitest
+npm run eval --prefix web -- --backend chrome|webllm [--set holdout]   # score the Oracle's model (headless Chrome)
 npm run format --prefix web    # format the front end
 ```
 
@@ -377,7 +397,7 @@ npm run format --prefix web    # format the front end
 
 The tests never touch the network: Metal Archives pages are reproduced as trimmed fragments with the same structure (`tests/fixtures.py`), and HTTP calls are replaced by fakes. They cover the parsers (band pages, lineups, discographies, review and change lists), genre and location parsing, the relevance score, region placement, iTunes matching (namesakes, self-titled albums), track selection for the game, the update's date logic and the data release packing.
 
-The front-end tests (`web/test/`, Vitest) cover the logic without the DOM: answer checking (typos, "the", accents), name masking, clue order, album clue and verdicts; counts under year and name filters; genre search; verified previews vs live iTunes search (namesakes, artists taken by verified bands) with a fake `fetch`; Metal Archives search links; clue HTML; the legend; translations (both languages complete). The views themselves (map, card, game screens) are checked in a headless browser (see `CLAUDE.md`).
+The front-end tests (`web/test/`, Vitest) cover the logic without the DOM: answer checking (typos, "the", accents), name masking, clue order, album clue and verdicts; counts under year and name filters; genre search; verified previews vs live iTunes search (namesakes, artists taken by verified bands) with a fake `fetch`; Metal Archives search links; clue HTML; the legend; translations (both languages complete); the Oracle's query parsing, engine (filters, sorts, rankings, lineups, albums) and `refine` rules. The models are scored separately with `npm run eval` (they need Chrome and a GPU). The views themselves (map, card, game screens) are checked in a headless browser (see `CLAUDE.md`).
 
 ### Code conventions
 
@@ -417,6 +437,7 @@ Compact (arrays instead of objects) to keep them small.
 | `c/<n>.json` | Bands of one country: `labels` and `rows` = `[id, name, slug\|0, year, status, label idx, genre text, [genre idx], reviews, avg rating, [regions]]`, sorted by relevance. |
 | `r/<n>.json` | Regions of one country: names, geometry (fills and borders) and the same genre × year summary per region. |
 | `bands.json` | Global index for the band search and the game: parallel columns `n` (names), `y` (years), `a` (active), `g` (genres), `l` (country + regions), `id`, `s` (non-standard slugs). Sorted by relevance. |
+| `oracle.json` | Parallel columns over every band, by relevance: `id`, `name`, `year`, `status`, `genre` / `location` / `themes` / `label` (indices into `dicts`), `g` (normalized genres), `country`, `reviews`, `rating`; `lineups` and `albums` keyed by row for the game bands. ~22 MB (~7 MB compressed), loaded only when the Oracle opens. See `metal_atlas/oracle.py`. |
 | `game.json` | `levels`: 5 lists of indices. `b`: rows `[id, name, slug, year, countries, members, lineup header, photo, review, review %, logo, iTunes artist id, [albums], [[preview url, song, album, cover], …], location]`. Up to 5 songs per band, from different albums, with shortened URLs (`game` strips the common prefix, `index.html` puts it back). |
 
 ### Scraper caches

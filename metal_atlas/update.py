@@ -20,7 +20,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
-from . import build, bundle, game, members, regions, verify
+from . import build, bundle, game, members, oracle, regions, verify
 from . import metal_archives as ma
 from . import paths
 from .jsonio import read_cached, read_json, write_cached, write_json
@@ -176,6 +176,7 @@ def rebuild() -> None:
         ("members", members.main, [str(game.GAME_BANDS), "3"]),
         ("verify", verify.main, [str(game.GAME_BANDS), "2"]),
         ("game", game.main, []),
+        ("oracle", oracle.main, []),
         ("bundle", bundle.main, []),
     ]
     for name, step, args in steps:

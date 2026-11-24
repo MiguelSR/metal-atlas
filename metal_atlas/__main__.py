@@ -12,6 +12,7 @@ COMMANDS = {
     "regions": ("regions", "place bands in regions and build the region geometry"),
     "game": ("game", "build game.json and previews.json"),
     "members": ("members", "download lineups, photos, logos and review passages of the game bands"),
+    "oracle": ("oracle", "build oracle.json, the data the Oracle answers questions from"),
     "verify": ("verify", "match the game bands to their iTunes artist and store their previews"),
     "reviews": ("reviews", "download the full review list and count reviews per band"),
     "scrape": ("scrape", "download the full Metal Archives band search (initial scrape)"),

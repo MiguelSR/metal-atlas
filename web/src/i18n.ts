@@ -152,6 +152,123 @@ function english(nf: (n: number) => string) {
     bandPhotoOf: (n: string) => `${n} band photo`,
     selfTitled: "(self-titled)",
     lineupHdr: (h: string) => `(${h.toLowerCase()})`,
+    // ---------- Oracle ----------
+    modeOracle: "Oracle",
+    oracleTitle: "Ask the data questions in plain words (desktop only)",
+    oTitle: "The Oracle",
+    oLead: "Ask about the 200,000 bands in Metal Archives, in English or Spanish.",
+    oHow: "How does it work?",
+    oIntroTitle: "Before you start",
+    oIntro: [
+      "<b>It runs on your computer.</b> A small AI inside your browser turns your question into a search over the Metal Archives data. Your questions don't leave your computer.",
+      "<b>It is slow at first.</b> Chrome uses its built-in AI (Gemini Nano: about 4 GB that Chrome downloads once). Other browsers with WebGPU download an open model (about 1.3 GB, kept in the cache), which then takes a minute or two to load each visit. The band data weighs about 7 MB. After that, each answer takes 1 to 10 seconds.",
+      "<b>What it knows:</b> genre, country, city, formation year, status, lyrical themes, label and reviews of every band; the current lineup and the discography of the 6,000 best known.",
+      "<b>What it doesn't know (yet):</b> lyrics, songs, former members, similar bands or album covers.",
+      "<b>It can misread a question.</b> Each answer shows how it was understood, so you can rephrase it.",
+    ],
+    oGotIt: "Got it",
+    oPh: "e.g. Which country has the most black metal bands?",
+    oAsk: "Ask",
+    oTry: "Try",
+    oExamples: [
+      "Which country has the most black metal bands?",
+      "Thrash bands from the Bay Area formed in the 80s",
+      "Who plays drums in Slayer?",
+      "Bathory's first album",
+      "Bands that sing about Tolkien",
+      "How many doom metal bands are there in Spain?",
+      "The labels with the most death metal bands in Sweden",
+      "The oldest bands in Japan",
+    ],
+    oDataLoading: "Loading the data of 202,746 bands (about 7 MB)…",
+    oDataError: "Couldn't load the band data. Check the connection and open the Oracle again.",
+    oChromeReady: "AI: Gemini Nano, built into Chrome.",
+    oWebllmReady: "AI: Qwen, an open model running on your graphics card.",
+    oChromeDownload:
+      "Chrome can download its built-in AI (Gemini Nano, about 4 GB, once) to understand your questions better.",
+    oChromeBtn: "Download Chrome's AI",
+    oWebllm:
+      "This browser has no built-in AI but can run an open model (Qwen, about 1.3 GB, cached after the first time) to understand your questions better.",
+    oWebllmCached: "The open model (Qwen) is already downloaded; loading it takes a minute or two.",
+    oWebllmBtn: "Download the model",
+    oWebllmLoad: "Load the model",
+    oNoModel:
+      "This browser can't run an AI (it needs desktop Chrome 148 or later, or WebGPU): only plain questions will be understood.",
+    oNoModelYet: "Until then, questions are understood without AI (plain questions only).",
+    oLoadingModel: (p: number) => `Loading the AI… ${p}%`,
+    oModelError: (e: string) => `Couldn't load the AI (${e}). Plain questions still work without it.`,
+    oThinking: "Thinking…",
+    oChecking: "Checking which AI this browser can use…",
+    oBy: { chrome: "Gemini Nano", webllm: "Qwen", rules: "no AI" },
+    oTook: (s: string, by: string) => `${s} s · ${by}`,
+    oUnderstood: "Understood as",
+    oIntents: {
+      bands: "bands",
+      count: "count",
+      top: "ranking",
+      albums: "albums",
+      lineup: "lineup",
+      unsupported: "can't answer",
+    },
+    oGroupBy: {
+      country: "by country",
+      genre: "by genre",
+      label: "by label",
+      year: "by formation year",
+      decade: "by decade",
+      location: "by place",
+      status: "by status",
+    },
+    oSorts: {
+      relevance: "most relevant",
+      reviews: "most reviewed",
+      rating: "best rated",
+      oldest: "oldest",
+      newest: "newest",
+    },
+    oField: {
+      band: "band",
+      genre: "genre",
+      country: "country",
+      location: "place",
+      themes: "themes",
+      label: "label",
+      member: "member",
+      role: "role",
+      album: "album",
+      albumType: "type",
+    },
+    oReleased: (a: number | null, b: number | null) =>
+      a && b
+        ? a === b
+          ? `released ${a}`
+          : `released ${a}–${b}`
+        : a
+          ? `released ${a} or later`
+          : `released ${b} or earlier`,
+    oLimit: (n: number) => `top ${n}`,
+    oBands: (n: number) => `${nf(n)} ${plural(n, "band", "bands")}`,
+    oAlbums: (n: number) => `${nf(n)} ${plural(n, "album", "albums")}`,
+    oShowing: (n: number) => `showing the first ${nf(n)}`,
+    oNoBands: "No band matches.",
+    oNoAlbums: "No album matches.",
+    oNoMembers: "No member matches.",
+    oNoLineupData: (n: number) =>
+      `Lineups are only known for the 6,000 best known bands; ${nf(n)} ${plural(n, "band", "bands")} found ${plural(n, "has", "have")} none.`,
+    oNoAlbumData: (n: number) =>
+      `Discographies are only known for the 6,000 best known bands; ${nf(n)} ${plural(n, "band", "bands")} found ${plural(n, "has", "have")} none.`,
+    oUnsupported: {
+      lyrics: "The Oracle doesn't have the lyrics (yet), only each band's lyrical themes.",
+      similar: "The Oracle doesn't know which bands are similar or what fans listen to (yet).",
+      covers: "The Oracle doesn't have the album covers (yet).",
+      past_members:
+        "The Oracle only knows each band's current (or last known) lineup, not former members or the order they joined.",
+      tracks: "The Oracle doesn't have the songs of each album (yet).",
+      other: "The Oracle can't answer that with the data it has.",
+    },
+    oCountryAsLocation: (v: string) => `“${v}” isn't a country in Metal Archives: searched as a place.`,
+    oBadAnswer: "The AI's answer wasn't a valid query: understood without AI.",
+    oFormedRow: (y: number) => `formed ${y}`,
   };
 }
 
@@ -305,9 +422,128 @@ function spanish(nf: (n: number) => string): Messages {
     lineupHdr: (h) =>
       /last known/i.test(h)
         ? "(última formación conocida)"
-        : /past/i.test(h)
-          ? "(antiguos miembros)"
-          : `(${h.toLowerCase()})`,
+        : /current/i.test(h)
+          ? "(formación actual)"
+          : /past/i.test(h)
+            ? "(antiguos miembros)"
+            : `(${h.toLowerCase()})`,
+    // ---------- Oracle ----------
+    modeOracle: "Oráculo",
+    oracleTitle: "Hazle preguntas a los datos con tus palabras (solo en ordenador)",
+    oTitle: "El Oráculo",
+    oLead: "Pregunta lo que quieras sobre las 200.000 bandas de Metal Archives, en español o en inglés.",
+    oHow: "¿Cómo funciona?",
+    oIntroTitle: "Antes de empezar",
+    oIntro: [
+      "<b>Funciona en tu ordenador.</b> Una IA pequeña dentro del navegador convierte tu pregunta en una búsqueda sobre los datos de Metal Archives. Tus preguntas no salen de tu ordenador.",
+      "<b>Al principio va lenta.</b> Chrome usa su IA integrada (Gemini Nano: unos 4 GB que Chrome descarga una sola vez). Otros navegadores con WebGPU descargan un modelo abierto (unos 1,3 GB, que se quedan en caché) y tardan un minuto o dos en cargarlo cada visita. Los datos de las bandas pesan unos 7 MB. Después, cada respuesta tarda entre 1 y 10 segundos.",
+      "<b>Qué sabe:</b> género, país, ciudad, año de formación, estado, temática de las letras, sello y reseñas de todas las bandas; la formación actual y la discografía de las 6.000 más conocidas.",
+      "<b>Qué no sabe (todavía):</b> letras, canciones, antiguos miembros, bandas parecidas ni portadas.",
+      "<b>Puede entender mal la pregunta.</b> Cada respuesta muestra cómo la ha entendido, para que puedas reformularla.",
+    ],
+    oGotIt: "Entendido",
+    oPh: "p. ej. ¿Qué país tiene más bandas de black metal?",
+    oAsk: "Preguntar",
+    oTry: "Prueba",
+    oExamples: [
+      "¿Qué país tiene más bandas de black metal?",
+      "Bandas de thrash de Murcia formadas en los 80",
+      "¿Quién toca la batería en Slayer?",
+      "Primer disco de Bathory",
+      "Bandas que hablen de Tolkien",
+      "¿Cuántas bandas de doom hay en España?",
+      "Los sellos con más bandas de death metal en Suecia",
+      "Las bandas más antiguas de Japón",
+    ],
+    oDataLoading: "Cargando los datos de 202.746 bandas (unos 7 MB)…",
+    oDataError: "No se han podido cargar los datos. Revisa la conexión y vuelve a abrir el Oráculo.",
+    oChromeReady: "IA: Gemini Nano, integrada en Chrome.",
+    oWebllmReady: "IA: Qwen, un modelo abierto que se ejecuta en tu tarjeta gráfica.",
+    oChromeDownload:
+      "Chrome puede descargar su IA integrada (Gemini Nano, unos 4 GB, una sola vez) para entender mejor tus preguntas.",
+    oChromeBtn: "Descargar la IA de Chrome",
+    oWebllm:
+      "Este navegador no trae IA, pero puede ejecutar un modelo abierto (Qwen, unos 1,3 GB, en caché tras la primera vez) para entender mejor tus preguntas.",
+    oWebllmCached: "El modelo abierto (Qwen) ya está descargado; cargarlo tarda un minuto o dos.",
+    oWebllmBtn: "Descargar el modelo",
+    oWebllmLoad: "Cargar el modelo",
+    oNoModel:
+      "Este navegador no puede ejecutar una IA (hace falta Chrome 148 o posterior de escritorio, o WebGPU): solo entenderá preguntas sencillas.",
+    oNoModelYet: "Mientras tanto, las preguntas se entienden sin IA (solo las sencillas).",
+    oLoadingModel: (p) => `Cargando la IA… ${p}%`,
+    oModelError: (e) => `No se ha podido cargar la IA (${e}). Las preguntas sencillas siguen funcionando sin ella.`,
+    oThinking: "Pensando…",
+    oChecking: "Comprobando qué IA puede usar este navegador…",
+    oBy: { chrome: "Gemini Nano", webllm: "Qwen", rules: "sin IA" },
+    oTook: (s, by) => `${s} s · ${by}`,
+    oUnderstood: "Entendido como",
+    oIntents: {
+      bands: "bandas",
+      count: "recuento",
+      top: "ranking",
+      albums: "discos",
+      lineup: "formación",
+      unsupported: "sin respuesta",
+    },
+    oGroupBy: {
+      country: "por país",
+      genre: "por género",
+      label: "por sello",
+      year: "por año de formación",
+      decade: "por década",
+      location: "por lugar",
+      status: "por estado",
+    },
+    oSorts: {
+      relevance: "más relevantes",
+      reviews: "más reseñadas",
+      rating: "mejor valoradas",
+      oldest: "más antiguas",
+      newest: "más recientes",
+    },
+    oField: {
+      band: "banda",
+      genre: "género",
+      country: "país",
+      location: "lugar",
+      themes: "temática",
+      label: "sello",
+      member: "miembro",
+      role: "instrumento",
+      album: "disco",
+      albumType: "tipo",
+    },
+    oReleased: (a, b) =>
+      a && b
+        ? a === b
+          ? `publicado en ${a}`
+          : `publicado ${a}–${b}`
+        : a
+          ? `publicado en ${a} o después`
+          : `publicado en ${b} o antes`,
+    oLimit: (n) => `top ${n}`,
+    oBands: (n) => `${nf(n)} ${plural(n, "banda", "bandas")}`,
+    oAlbums: (n) => `${nf(n)} ${plural(n, "disco", "discos")}`,
+    oShowing: (n) => `se muestran las ${nf(n)} primeras`,
+    oNoBands: "Ninguna banda cumple eso.",
+    oNoAlbums: "Ningún disco cumple eso.",
+    oNoMembers: "Ningún miembro cumple eso.",
+    oNoLineupData: (n) =>
+      `Solo se conoce la formación de las 6.000 bandas más conocidas; ${nf(n)} de las encontradas no la ${plural(n, "tiene", "tienen")}.`,
+    oNoAlbumData: (n) =>
+      `Solo se conoce la discografía de las 6.000 bandas más conocidas; ${nf(n)} de las encontradas no la ${plural(n, "tiene", "tienen")}.`,
+    oUnsupported: {
+      lyrics: "El Oráculo no tiene las letras (todavía), solo la temática de cada banda.",
+      similar: "El Oráculo no sabe qué bandas se parecen ni qué escuchan sus fans (todavía).",
+      covers: "El Oráculo no tiene las portadas de los discos (todavía).",
+      past_members:
+        "El Oráculo solo conoce la formación actual (o la última conocida) de cada banda, no los antiguos miembros ni el orden en que entraron.",
+      tracks: "El Oráculo no tiene las canciones de cada disco (todavía).",
+      other: "El Oráculo no puede responder a eso con los datos que tiene.",
+    },
+    oCountryAsLocation: (v) => `“${v}” no es un país en Metal Archives: lo he buscado como lugar.`,
+    oBadAnswer: "La respuesta de la IA no era una consulta válida: entendida sin IA.",
+    oFormedRow: (y) => `formada en ${y}`,
   };
 }
 

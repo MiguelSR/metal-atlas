@@ -317,12 +317,76 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
 .hist li span:last-child { font-family: var(--mono); color: var(--muted); }
 .grow { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .gloading { color: var(--muted); font-family: var(--mono); font-size: 12px; padding: 24px 0; text-align: center; }
+/* ---------- the Oracle (desktop only) ---------- */
+@media (max-width: 899px), (pointer: coarse) { #omode, .oracle { display: none !important; } }
+body.oracle-on .tools, body.oracle-on .legend, body.oracle-on .zoom, body.oracle-on .results, body.oracle-on .pop,
+body.oracle-on .tip, body.oracle-on .credits { display: none !important; }
+body.oracle-on .np { z-index: 5; }
+.oracle { position: absolute; inset: 0; z-index: 4; overflow-y: auto; display: grid; place-items: start center;
+  background: color-mix(in srgb, var(--ground) 92%, transparent); padding: 24px 16px 48px; }
+.ocard { width: 100%; max-width: 760px; background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.5); padding: 22px 24px; display: grid; gap: 14px; }
+.ohead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ohead h2 { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1; margin: 0; }
+.olink { background: none; border: 0; padding: 0; color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.olink:hover { color: var(--gold); }
+.ointro { display: grid; gap: 10px; justify-items: start; padding: 14px 16px; border-radius: 8px;
+  background: color-mix(in srgb, var(--gold) 8%, transparent); border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); }
+.ointro h3 { margin: 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); font-weight: 600; }
+.ointro ul { margin: 0; padding-left: 18px; display: grid; gap: 7px; line-height: 1.5; }
+.ointro b { color: var(--ink); font-weight: 600; } .ointro li { color: color-mix(in srgb, var(--ink) 82%, var(--muted)); }
+.oform input:disabled, .oform button:disabled { opacity: .5; cursor: default; }
+.oexs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.oex { background: var(--land); border: 0; color: var(--ink); border-radius: 999px; font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer; }
+.oex:hover:not(:disabled) { color: var(--gold); }
+.oex:disabled { opacity: .5; cursor: default; }
+.ostatus { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.ostatus:empty { display: none; }
+.ostatus .gbtn { padding: 3px 10px; font-size: 12.5px; margin-left: 6px; }
+.obar { display: inline-block; width: 140px; height: 4px; margin-left: 10px; vertical-align: middle; background: var(--land); border-radius: 2px; overflow: hidden; }
+.obar i { display: block; height: 100%; background: var(--gold); }
+.ospin { display: inline-block; width: 9px; height: 9px; margin-right: 8px; vertical-align: -1px; border: 2px solid var(--muted);
+  border-top-color: transparent; border-radius: 50%; animation: plspin 1s linear infinite; }
+.oerr { color: #e07a6e; }
+.oanswers { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.oa { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.oq { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.othink { color: var(--muted); font-size: 13px; }
+.ometa { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.olab { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.otook { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.onote { font-size: 12px; color: var(--muted); font-style: italic; }
+.omsg { margin: 0; line-height: 1.5; }
+.obig { font-family: var(--display); font-size: 46px; line-height: 1; color: var(--gold); }
+.osum { color: var(--muted); font-size: 12.5px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.oa a { color: var(--ink); font-weight: 600; text-decoration: none; }
+.oa a:hover { color: var(--gold); text-decoration: underline; }
+.osum a { font-size: 16px; }
+.obands { list-style: none; margin: 0; padding: 0; }
+.ogroups { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.og { display: grid; grid-template-columns: 22px 1fr auto; gap: 3px 8px; align-items: center; padding: 5px 4px; }
+.og .rk { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.og .nm { min-width: 0; overflow-wrap: anywhere; }
+.og .ct { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.og .track { grid-column: 2 / -1; height: 5px; background: var(--land); border-radius: 2px; overflow: hidden; }
+.og .fill { display: block; height: 100%; background: var(--gold); opacity: .75; border-radius: 2px; }
+.oalbums { list-style: none; margin: 0; padding: 0; display: grid; }
+.oalbums li { display: grid; grid-template-columns: 44px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--rule); font-size: 13.5px; }
+.oalbums li:last-child { border-bottom: 0; }
+.oalbums b { font-weight: 600; }
+.oy { font-family: var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.oalbums small, .omembers small, .osum small { color: var(--muted); }
+.ob, .ob a { color: var(--muted); font-weight: 400; }
+.omembers { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 5px; font-size: 14px; }
+.olineup + .olineup { margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .ospin { animation: none; } }
 </style>
 
 <div class="app">
   <header>
     <div>
-      <div class="titlerow"><h1>Metal Atlas</h1><button class="mode" id="mode" aria-pressed="false" title="Switch between the map and the guessing game">Game</button><button class="mode lang" id="lang"><b>EN</b> · ES</button></div>
+      <div class="titlerow"><h1>Metal Atlas</h1><button class="mode" id="mode" aria-pressed="false" title="Switch between the map and the guessing game">Game</button><button class="mode" id="omode" aria-pressed="false" title="Ask the data questions in plain words (desktop only)">Oracle</button><button class="mode lang" id="lang"><b>EN</b> · ES</button></div>
       <div class="sub" id="sub">Loading…</div>
     </div>
     <div class="tools">
@@ -354,6 +418,7 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
     <div class="pop" id="pop" hidden role="dialog" aria-live="polite"></div>
     <div class="np" id="np" hidden role="region" aria-label="Preview player"></div>
     <div class="game" id="game" hidden aria-live="polite"></div>
+    <div class="oracle" id="oracle" hidden aria-live="polite"></div>
   </div>
 </div>
 

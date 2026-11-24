@@ -13,6 +13,7 @@ import { GenreColors } from "./map/colors";
 import { bindCountryFinder, bindYearFilter, translatePage } from "./map/controls";
 import { Legend } from "./map/legend";
 import { WorldMap } from "./map/world-map";
+import { OracleView } from "./oracle/oracle-view";
 import { PreviewPlayer } from "./player";
 import { AppState } from "./state";
 
@@ -91,10 +92,26 @@ async function main(): Promise<void> {
     if (e.key === "Escape") card.close();
   });
 
-  new GameView($("game"), $("mode"), state, () => {
-    player.stop();
-    card.close();
-  });
+  // modes: the map, the game or the Oracle; each mode button goes back to the map when its mode is on
+  type Mode = "map" | "game" | "oracle";
+  const gameButton = $("mode");
+  const oracleButton = $("omode");
+  const game = new GameView($("game"), state, () => setMode("map"));
+  const oracle = new OracleView($("oracle"), state, player);
+  function setMode(mode: Mode): void {
+    document.body.classList.toggle("game-on", mode === "game");
+    document.body.classList.toggle("oracle-on", mode === "oracle");
+    gameButton.textContent = mode === "game" ? t("modeMap") : t("modeGame");
+    oracleButton.textContent = mode === "oracle" ? t("modeMap") : t("modeOracle");
+    gameButton.setAttribute("aria-pressed", String(mode === "game"));
+    oracleButton.setAttribute("aria-pressed", String(mode === "oracle"));
+    if (mode !== "map") card.close();
+    if (mode === "game") player.stop();
+    game.show(mode === "game");
+    oracle.show(mode === "oracle");
+  }
+  gameButton.onclick = () => setMode(document.body.classList.contains("game-on") ? "map" : "game");
+  oracleButton.onclick = () => setMode(document.body.classList.contains("oracle-on") ? "map" : "oracle");
   paint();
 }
 

@@ -51,6 +51,14 @@ Static site (https://miguelsr.js.org/metal-atlas/, repo `MiguelSR/metal-atlas`, 
 - Card counts link to MA's advanced search with the active filters. Grouped regions (Spain, Italy, France) are translated to MA's English location names in `REGION_EN` (index.html); UK and Slovenia regions are statistical, so no region link.
 - Genre search in the card sorts by band count (relevance), not alphabetically.
 
+**The Oracle** (owner's idea, 2026-11-24: "ask anything", running in the browser with Chrome's Prompt API and WebLLM as fallback; desktop only, with an intro panel that warns it is slow and example questions)
+- **No training, no classic RAG.** Fine-tuning doesn't teach facts reliably, and vector retrieval can't count or rank ("which country has the most…"). The model translates the question into a small JSON query language (`oracle/query.ts`, constrained with a JSON schema); a deterministic engine answers it from `oracle.json`. Answers come from the data, never from the model.
+- **No DuckDB/Parquet**: the query language is small, so a TypeScript engine over a columnar JSON is enough (filters over 200k rows take milliseconds), testable with Vitest, and avoids a ~30 MB WASM download and SQL written by a small model.
+- **Small models are not reliable alone** (measured): Gemini Nano alone got 13/32 and 9/20, Qwen3.5-2B 11/32. They invent filters (a country, a genre, "missing: lyrics") and miss plain cues. Hence `refine`: rules read explicit cues and the model's additions are kept only if the question backs them. On a held-out set written after the rules: Nano + rules 17/20, rules alone 17/20. **The model adds little over the rules**; its value is translating places and themes and catching phrasings the rules don't know. Keep it honest: measure with `npm run eval`, and **write new questions in `web/eval/holdout.ts` before tuning**; tuning on a set inflates its score (both earlier sets went to 32/32 and 20/20 after tuning).
+- WebLLM model: **Qwen3.5-2B** (same score as with Nano, ~6 s/question, ~1.5 min to load even when cached). Qwen3.5-0.8B hung in the evaluation. Loaded from esm.run at a pinned version (not bundled: it is large and only needed by some viewers); `enable_thinking: false`.
+- Nothing big downloads without a click (owner: nothing intrusive): Gemini Nano loads by itself only if Chrome already has it; otherwise a button. Until a model is ready, questions are answered with the rules alone.
+- Lineups and discographies exist only for the ~6,000 game bands (`members`/`verify` caches); the UI says so. Lyrics, songs, former members, similar bands and covers are answered with "not yet" (`missing` in the query).
+
 **Code**
 - Python **3.15** (owner's explicit choice). Standard library only at runtime; dev tools in `requirements-dev.txt`.
 - One module per step with `main(argv)`; pure functions for logic; paths only in `paths.py`; MA specifics only in `metal_archives.py`; HTTP only in `net.py`; atomic JSON writes.
@@ -69,6 +77,7 @@ Static site (https://miguelsr.js.org/metal-atlas/, repo `MiguelSR/metal-atlas`, 
 - Images with fallbacks in the game don't use inline `onerror`: `GameView` listens to `error` events (capture) and uses `data-fallback`.
 - `make_netlify.py`/`map/netlify` and the scripts in `map/*.py`, `scraper/*.py` no longer exist (replaced by `metal_atlas/`); old notes may mention them.
 - The daily job and a local `data push` can overwrite each other: don't push data while the job runs.
+- The mode buttons live in `main.ts` (`setMode`): `GameView.show` / `OracleView.show` only show or hide their view.
 - `gh run watch` on a just-triggered run: wait a few seconds for it to appear.
 
 ## Checking changes
@@ -76,6 +85,7 @@ Static site (https://miguelsr.js.org/metal-atlas/, repo `MiguelSR/metal-atlas`, 
 - `pre-commit run --all-files` (Python and front-end checks). Tests must not use the network (front end: fake `fetch`).
 - **Refactors of the build steps**: generate outputs before and after (`regions`, `build`, `game`, `bundle`) and diff the files (`diff -rq`, `cmp`); explain every difference.
 - **Front end**: Vitest covers the logic; the views need a browser. Build (`npm run build --prefix web`, `python -m metal_atlas bundle`), serve `map/public` with `python -m http.server`, inject a test script into a copy of index.html that drives the UI (click buttons, set inputs, `WheelEvent` for zoom) and writes a log into a `<pre id="__out">`, then run `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --window-size=1400,900 --virtual-time-budget=120000 --dump-dom URL` and read the log. When porting or refactoring, run the same script against the previous build and compare the logs (done for the JS -> TS port: country card links, ▶ for the three "Nevermore", band search, legend focus, region mode and card, 10 game rounds, final score).
+- **Oracle**: `npm run eval --prefix web -- --backend chrome` (or `webllm`) scores the model + rules on `web/eval/questions.ts` (`--set holdout` for the held-out set) in headless Chrome over the DevTools protocol (real time, a real click for user activation). The profile `~/.cache/metal-atlas-eval` keeps the models; copying `OptGuideOnDeviceModel` from the owner's Chrome profile into it avoids the 4 GB Gemini Nano download (Chrome then registers it on the first `create()`, ~20 s). `--virtual-time-budget` can't be used for this (model promises never resolve under virtual time); the window must be ≥ 900 px wide or the Oracle is hidden.
 - **Pipeline end to end**: `gh workflow run daily.yml`, then check the run log ("dataset: +N new…", "levels: […]") and the site.
 
 ## Open ideas (not requested yet)

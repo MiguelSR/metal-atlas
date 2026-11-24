@@ -47,12 +47,11 @@ export class GameView {
 
   constructor(
     private readonly element: HTMLElement,
-    private readonly modeButton: HTMLElement,
     private readonly state: AppState,
-    private readonly onEnter: () => void,
+    /** back to the map (the mode switch lives in main.ts) */
+    private readonly onExit: () => void,
   ) {
     this.audio.volume = 0.8;
-    modeButton.onclick = () => this.setMode(!document.body.classList.contains("game-on"));
     element.addEventListener("click", (e) => this.onClick(e));
     element.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -67,7 +66,7 @@ export class GameView {
       if (bar && this.audio.duration) bar.style.width = `${(100 * this.audio.currentTime) / this.audio.duration}%`;
     });
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && !element.hidden && this.phase === "setup") this.setMode(false);
+      if (e.key === "Escape" && !element.hidden && this.phase === "setup") this.onExit();
     });
   }
 
@@ -80,16 +79,12 @@ export class GameView {
     return this.state.t;
   }
 
-  setMode(on: boolean): void {
-    document.body.classList.toggle("game-on", on);
-    this.modeButton.textContent = on ? this.t("modeMap") : this.t("modeGame");
-    this.modeButton.setAttribute("aria-pressed", String(on));
+  show(on: boolean): void {
     this.element.hidden = !on;
     if (!on) {
       this.audio.pause();
       return;
     }
-    this.onEnter();
     void this.load().then(() => this.phase === "setup" && this.render());
     void this.state.loadBands(); // for the name suggestions
     this.render();
@@ -238,7 +233,7 @@ export class GameView {
         void this.nextRound();
         break;
       case "map":
-        this.setMode(false);
+        this.onExit();
         break;
       case "menu":
         this.audio.pause();
