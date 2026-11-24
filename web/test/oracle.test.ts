@@ -7,7 +7,8 @@ import { OracleEngine, roleNeedle } from "../src/oracle/engine";
 import { EXAMPLES } from "../src/oracle/examples";
 import { pickRandom } from "../src/oracle/oracle-view";
 import { type Query, extractJson, parseQuery } from "../src/oracle/query";
-import { type Vocabulary, countriesIn, refine, themeWord, yearsIn } from "../src/oracle/refine";
+import { type Vocabulary, countriesIn, refine, yearsIn } from "../src/oracle/refine";
+import { conceptsIn, themeOf } from "../src/oracle/themes";
 
 /** Five bands, most relevant first. */
 function oracleFile(): OracleFile {
@@ -180,14 +181,18 @@ describe("refine: the question's own cues", () => {
     expect(countriesIn("tell us about it", vocab)).toEqual([]);
   });
 
-  it("translates common themes", () => {
-    expect(themeWord("satánica")).toBe("satan");
-    expect(themeWord("guerra")).toBe("war");
-    expect(themeWord("Lovecraft")).toBe("lovecraft");
-    expect(themeWord("cristianismo")).toBe("christian");
-    expect(themeWord("anticristianismo")).toBe("anti-christian");
-    expect(themeWord("mar")).toBe("sea");
-    expect(themeWord("marte")).toBe("marte");
+  it("finds theme concepts in any language", () => {
+    expect(themeOf("satánica")).toBe("satan");
+    expect(themeOf("guerra")).toBe("war");
+    expect(themeOf("Lovecraft")).toBe("lovecraft");
+    expect(themeOf("cristianismo")).toBe("christian");
+    expect(themeOf("Christianity")).toBe("christian");
+    expect(themeOf("anticristianismo")).toBe("anti-christian");
+    expect(themeOf("mar")).toBe("sea");
+    expect(themeOf("marte")).toBe("marte");
+    expect(conceptsIn("que hablen de mitología eslava")).toEqual(["myth", "slav"]);
+    expect(conceptsIn("sobre la ciencia ficción y el espacio exterior")).toEqual(["science fiction", "space"]);
+    expect(conceptsIn("about serial killers")).toEqual(["serial kill"]);
   });
 
   it("reads lists, counts and rankings", () => {

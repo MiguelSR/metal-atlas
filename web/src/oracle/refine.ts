@@ -9,6 +9,10 @@
 
 import { fold } from "../format";
 import type { AlbumType, Group, Missing, Query, Sort, Status } from "./query";
+import { conceptsIn, isConcept, themeOf } from "./themes";
+import { PLACE_NAMES } from "./vocab";
+
+const PLACES: Record<string, string> = { ...PLACE_NAMES, "bay area": "Bay Area" };
 
 /** What the rules need to know about the data. Names are folded (see `fold`). */
 export interface Vocabulary {
@@ -43,39 +47,6 @@ const GENRE_SYNONYMS: Record<string, string> = {
   progressive: "progressive",
   prog: "progressive",
   grind: "grind",
-};
-
-/** Spanish (and local) place names -> the spelling in Metal Archives locations. */
-const PLACES: Record<string, string> = {
-  sevilla: "Seville",
-  gotemburgo: "Gothenburg",
-  goteborg: "Gothenburg",
-  estocolmo: "Stockholm",
-  londres: "London",
-  "nueva york": "New York",
-  "nueva jersey": "New Jersey",
-  "nueva orleans": "New Orleans",
-  munich: "Munich",
-  colonia: "Cologne",
-  atenas: "Athens",
-  varsovia: "Warsaw",
-  cataluna: "Catalonia",
-  andalucia: "Andalusia",
-  "pais vasco": "Basque Country",
-  baviera: "Bavaria",
-  escocia: "Scotland",
-  inglaterra: "England",
-  gales: "Wales",
-  tejas: "Texas",
-  "bay area": "Bay Area",
-  "area de la bahia": "Bay Area",
-  helsinki: "Helsinki",
-  bergen: "Bergen",
-  oslo: "Oslo",
-  tampa: "Tampa",
-  florida: "Florida",
-  california: "California",
-  texas: "Texas",
 };
 
 /** Adjectives of nationality (folded stems, matched at the start of a word) -> Metal Archives country. */
@@ -151,122 +122,6 @@ const DEMONYMS: [stem: string, country: string][] = [
 ];
 const RUSSIAN = new Set(["ruso", "rusa", "rusos", "rusas"]);
 
-/** Spanish words for common lyrical themes (folded stems) -> the English stem Metal Archives uses. */
-const THEME_WORDS: [stem: string, english: string][] = [
-  ["satan", "satan"],
-  ["anticristian", "anti-christian"],
-  ["cristian", "christian"],
-  ["catolic", "catholic"],
-  ["biblia", "bibl"],
-  ["biblic", "bibl"],
-  ["dios", "god"],
-  ["jesus", "jesus"],
-  ["cristo", "christ"],
-  ["iglesia", "church"],
-  ["cielo", "heaven"],
-  ["infierno", "hell"],
-  ["angel", "angel"],
-  ["diablo", "devil"],
-  ["salvacion", "salvation"],
-  ["redencion", "redemption"],
-  ["fe", "faith"],
-  ["esperanza", "hope"],
-  ["alma", "soul"],
-  ["locura", "madness"],
-  ["enfermedad", "disease"],
-  ["droga", "drug"],
-  ["sexo", "sex"],
-  ["fiesta", "party"],
-  ["rebel", "rebel"],
-  ["libertad", "freedom"],
-  ["anarqu", "anarch"],
-  ["sociedad", "societ"],
-  ["corrupci", "corruption"],
-  ["injustici", "injustice"],
-  ["guerrer", "warrior"],
-  ["batalla", "battle"],
-  ["gloria", "glory"],
-  ["caballer", "knight"],
-  ["templari", "templar"],
-  ["cruzada", "crusade"],
-  ["egipt", "egypt"],
-  ["azteca", "aztec"],
-  ["tecnolog", "technolog"],
-  ["extraterrest", "alien"],
-  ["ovni", "ufo"],
-  ["conspira", "conspira"],
-  ["asesin", "murder"],
-  ["tortura", "torture"],
-  ["canibal", "cannibal"],
-  ["cadaver", "corpse"],
-  ["putrefac", "decay"],
-  ["misantrop", "misanthrop"],
-  ["misticism", "mystic"],
-  ["espiritual", "spiritual"],
-  ["chaman", "shaman"],
-  ["nieve", "snow"],
-  ["montana", "mountain"],
-  ["lobo", "wolf"],
-  ["noche", "night"],
-  ["luna", "moon"],
-  ["oceano", "ocean"],
-  ["mar", "sea"],
-  ["guerra", "war"],
-  ["belic", "war"],
-  ["muerte", "death"],
-  ["ocult", "occult"],
-  ["mitolog", "mytholog"],
-  ["viking", "viking"],
-  ["odio", "hate"],
-  ["dolor", "pain"],
-  ["depresi", "depression"],
-  ["suicid", "suicide"],
-  ["naturaleza", "nature"],
-  ["pagan", "pagan"],
-  ["histori", "history"],
-  ["fantasia", "fantasy"],
-  ["espacio", "space"],
-  ["terror", "horror"],
-  ["politic", "politic"],
-  ["religi", "religion"],
-  ["misantrop", "misanthrop"],
-  ["tristeza", "sadness"],
-  ["soledad", "loneliness"],
-  ["amor", "love"],
-  ["cerveza", "beer"],
-  ["zombi", "zombie"],
-  ["apocalip", "apocalyp"],
-  ["nihilis", "nihilism"],
-  ["oscuridad", "darkness"],
-  ["invierno", "winter"],
-  ["bosque", "forest"],
-  ["pirata", "pirate"],
-  ["demoni", "demon"],
-  ["bruj", "witch"],
-  ["vampir", "vampire"],
-  ["magia", "magic"],
-  ["esoteri", "esoteric"],
-  ["filosof", "philosoph"],
-  ["existencial", "existential"],
-  ["dragon", "dragon"],
-  ["medieval", "medieval"],
-  ["cienci", "science"],
-  ["eslav", "slavic"],
-  ["celta", "celtic"],
-  ["nordic", "norse"],
-  ["nordica", "norse"],
-  ["exterior", "space"],
-  ["universo", "universe"],
-  ["cosmo", "cosm"],
-];
-
-/** A theme word in the English Metal Archives uses: Spanish common themes translated, others kept. */
-export function themeWord(word: string): string {
-  const folded = fold(word);
-  // short words must match whole ("fe", "mar"), longer ones as a stem ("cristianismo")
-  return THEME_WORDS.find(([stem]) => (stem.length < 4 ? folded === stem : folded.startsWith(stem)))?.[1] ?? folded;
-}
-
 const ROLES: [RegExp, string][] = [
   [/\b(canta|cantan|cantante|vocalista|voz|sings?|singer|vocals?|vocalist)\b/, "vocals"],
   [/\b(guitarra|guitarrista|guitarras|guitars?|guitarist)\b/, "guitars"],
@@ -280,7 +135,7 @@ const NOT_A_NAME = new Set(
   (
     "bandas grupos banda grupo discos disco discografia miembros integrantes eps ep demos album albumes que quien " +
     "cual cuales cuantas cuantos como donde los las el la de del en y bands band albums album members who what " +
-    "which how the of in and lineup ultimo primer mejores mejor"
+    "which how of in and lineup ultimo primer mejores mejor"
   ).split(" "),
 );
 const CONNECTORS = new Set(["of", "the", "in", "and", "de", "del", "la", "el", "los", "las", "y", "a", "to", "n'"]);
@@ -511,26 +366,34 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   }
 
   // ---------- themes ----------
-  // the model's themes are kept when the question asks about themes (it translates them well); the question's
-  // words are the fallback
-  const article = "(?:(?:la|el|los|las|the|a)\\s+)?";
-  const asked = new RegExp(
-    `(?:(?:habl|trat|cant)(?:a|an|en|e|o|ar|aron|aba|aban|ado|ando)|letras|tematicas?|temas?|themes?|sings?|sang|writes?|wrote)\\s+(?:de|del|sobre|acerca de|about|of)\\s+${article}([\\p{L}-]+)|\\b(?:about|sobre)\\s+${article}([\\p{L}-]+)|tematica\\s+([\\p{L}-]+)`,
-    "u",
-  ).exec(q);
-  const aboutThemes =
-    asked !== null ||
-    /\b(tematicas?|temas|letras|lyrics|themes?|(?:habl|trat|cant)(?:a|an|en|e|o|ar|aron|aba|aban|ado|ando))\b/.test(q);
-  const themes = aboutThemes ? [...new Set((model.themes ?? []).map(themeWord))] : [];
-  if (!themes.length && asked) themes.push(themeWord(asked[1] ?? asked[2] ?? asked[3]!));
+  // the themes are the concepts (vocab.ts) named after a cue ("que hablen de…", "about…"); the model's only if none
+  const cue =
+    /\b(?:tematicas?|temas?|letras|lyrics|themes?|about|sobre|acerca de|(?:habl|trat|cant)(?:a|an|en|e|o|ar|aron|aba|aban|ado|ando)|sings?|sang|writes?|wrote)\b/.exec(
+      q,
+    );
+  // not in lineup or album questions ("¿Quién canta en Severe Torture?"), and never inside a name
+  const themed = cue !== null && query.intent !== "lineup" && query.intent !== "albums";
+  let themeText = themed ? q.slice(cue.index) : "";
+  for (const name of [query.band, query.album, query.label, query.member]) {
+    if (name) themeText = themeText.replace(fold(name), " ");
+  }
+  let themes = conceptsIn(themeText);
+  if (!themes.length && themed && model.themes) {
+    const mapped = [...new Set(model.themes.map(themeOf))];
+    // the model lists synonyms: keep the ones the vocabulary knows when there are any
+    themes = mapped.some(isConcept) ? mapped.filter(isConcept) : mapped;
+  }
+  if (!themes.length && themed) {
+    const word = /^\S+\s+(?:(?:de|del|sobre|about|of)\s+)?(?:(?:la|el|los|las|the|a)\s+)?([\p{L}-]{3,})/u.exec(
+      themeText,
+    );
+    if (word) themes = [themeOf(word[1]!)];
+  }
   if (themes.length) query.themes = themes;
+  const isTheme = (value: string): boolean => themed && themeText.includes(fold(value));
 
   // ---------- places ----------
   const named = [query.band, query.album, query.label, query.member].filter(Boolean).map((n) => fold(n!));
-  const themeStems = [...(query.themes ?? []), ...(asked ? [asked[1] ?? asked[2] ?? asked[3]!] : [])].map((w) =>
-    fold(w).slice(0, 4),
-  );
-  const isTheme = (value: string): boolean => themeStems.some((stem) => fold(value).startsWith(stem));
   const outside = (value: string): boolean => !named.some((name) => name.includes(fold(value))) && !isTheme(value);
   const countries = countriesIn(q, vocab).filter(outside);
   if (countries.length) query.country = countries[0]!;
@@ -557,9 +420,10 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
 
   // ---------- genre ----------
   const genre: string[] = [];
-  for (const token of tokens) {
+  // genre words before the theme cue only: "pagan metal bands that sing about paganism"
+  for (const token of themed ? words(q.slice(0, cue.index)) : tokens) {
     const word = GENRE_SYNONYMS[token] ?? token;
-    if (!GENRE_WORDS.has(word) || !outside(token)) continue;
+    if (!GENRE_WORDS.has(word) || named.some((name) => name.includes(token))) continue;
     if (!genre.includes(word)) genre.push(word);
   }
   if (genre.length) query.genre = genre;

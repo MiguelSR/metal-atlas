@@ -9,7 +9,8 @@ import { fold } from "../src/format";
 import { type OracleFile, OracleIndex } from "../src/oracle/data";
 import { type Answer, OracleEngine } from "../src/oracle/engine";
 import type { Query } from "../src/oracle/query";
-import { refine, themeWord } from "../src/oracle/refine";
+import { refine } from "../src/oracle/refine";
+import { themeOf } from "../src/oracle/themes";
 import { mismatches } from "./compare";
 
 type Lang = "es" | "en";
@@ -49,7 +50,7 @@ const GENRES: [string, string, string[]][] = [
   ["crust", "crust", ["crust"]],
 ];
 
-/** [Spanish, English] theme words; the query gets `themeWord` of each */
+/** [Spanish, English] theme words; the query gets `themeOf` of each (its concept) */
 const THEMES: [string, string][] = [
   ["la guerra", "war"],
   ["Satanás", "Satan"],
@@ -248,18 +249,18 @@ export function makeExamples(
       "theme",
       `Bandas que hablen de ${tEs}`,
       `Bands that sing about ${tEn}`,
-      { intent: "bands", themes: [themeWord(tEs.replace(/^(la|el|los|las) /, ""))] },
+      { intent: "bands", themes: [themeOf(tEs)] },
       {
         intent: "bands",
-        themes: [themeWord(tEn)],
+        themes: [themeOf(tEn)],
       },
     );
     add(
       "genre-theme",
       `Bandas de ${gEs} que hablen de ${tEs}`,
       `${cap(gEn)} bands that sing about ${tEn}`,
-      { intent: "bands", genre, themes: [themeWord(tEs.replace(/^(la|el|los|las) /, ""))] },
-      { intent: "bands", genre, themes: [themeWord(tEn)] },
+      { intent: "bands", genre, themes: [themeOf(tEs)] },
+      { intent: "bands", genre, themes: [themeOf(tEn)] },
     );
     add("labels", `Los sellos con más bandas de ${gEs} en ${cEs}`, `The labels with the most ${gEn} bands in ${cEn}`, {
       intent: "top",

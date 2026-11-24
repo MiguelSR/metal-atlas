@@ -30,7 +30,7 @@ export interface Query {
   status?: Status;
   formedFrom?: number;
   formedTo?: number;
-  /** lyrical themes: any of the words (models list synonyms) */
+  /** lyrical themes, as theme concepts (themes.ts): all must appear */
   themes?: string[];
   label?: string;
   /** a musician in the lineup */

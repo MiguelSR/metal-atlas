@@ -3,6 +3,7 @@
 import { fold } from "../format";
 import type { Album, OracleIndex } from "./data";
 import { type Missing, type Query, STATUSES } from "./query";
+import { themeStems } from "./themes";
 
 export interface AlbumHit {
   row: number;
@@ -130,10 +131,10 @@ export class OracleEngine {
     }
     if (query.location) inDict("location", [query.location]);
     if (query.themes) {
-      // any of the words: models list synonyms ("space", "universe"), and several themes rarely all appear
-      const hits = query.themes.map((word) => this.index.themeMatches(word));
+      // every theme (concept) must appear; each one through any of its stems
+      const hits = query.themes.map((theme) => this.index.themeMatches(themeStems(theme)));
       const column = data.themes;
-      tests.push((row) => hits.some((h) => h[column[row]!] === 1));
+      tests.push((row) => hits.every((h) => h[column[row]!] === 1));
     }
     if (query.label) inDict("label", [query.label]);
     if (query.status) {

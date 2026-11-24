@@ -131,10 +131,16 @@ export class OracleIndex implements Vocabulary {
     return hits;
   }
 
-  /** Which lyrical themes contain the word, not counting "anti-" ones ("christian" is not "anti-christian"). */
-  themeMatches(word: string): Uint8Array {
-    const needle = fold(word).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pattern = new RegExp(needle.startsWith("anti") ? needle : `(?<!anti[- ]?)${needle}`);
+  /**
+   * Which lyrical themes contain one of the stems (regular expression sources, matched at the start of a word; a
+   * trailing "$" ends the word), not counting "anti-" ones ("christian" is not "anti-christian").
+   */
+  themeMatches(stems: string[]): Uint8Array {
+    const alternatives = stems.map((stem) => {
+      const source = stem.replace(/\$$/, "\\b");
+      return source.startsWith("anti") ? `\\b${source}` : `(?<!anti[- ]?)\\b${source}`;
+    });
+    const pattern = new RegExp(alternatives.join("|"));
     const values = this.foldedDict("themes");
     const hits = new Uint8Array(values.length);
     values.forEach((value, i) => {
