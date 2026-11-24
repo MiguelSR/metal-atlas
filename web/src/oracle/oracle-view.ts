@@ -99,7 +99,8 @@ export class OracleView {
   show(on: boolean): void {
     this.element.hidden = !on;
     if (!on) return;
-    this.shuffleExamples();
+    // picked once; only the 🎲 button changes them (re-picking on every question felt odd)
+    if (!this.examples.length) this.shuffleExamples();
     this.render();
     if (this.dataState !== "ready") {
       this.dataState = "loading";
@@ -117,7 +118,7 @@ export class OracleView {
     this.render();
   }
 
-  /** Eight example questions picked at random from the generated list. */
+  /** Eight example questions picked at random from the generated list (on first open and on 🎲). */
   private shuffleExamples(): void {
     this.examples = pickRandom(EXAMPLES[this.lang], EXAMPLE_COUNT);
   }
@@ -181,7 +182,6 @@ export class OracleView {
       entry.error = error instanceof Error ? error.message : String(error);
     }
     this.busy = false;
-    this.shuffleExamples();
     this.render();
     const input = this.element.querySelector<HTMLInputElement>("#oq");
     if (input) {
