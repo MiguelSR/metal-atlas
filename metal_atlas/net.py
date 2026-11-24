@@ -9,9 +9,9 @@ import threading
 import time
 from typing import Any
 
-USER_AGENT = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
-)
+# An honest client name with a link to the project, instead of pretending to be a browser (Cloudflare accepts it,
+# checked 2026-11-24 locally and from GitHub's runners). No personal contact details: the repository is public.
+USER_AGENT = "MetalAtlas/1.0 (+https://github.com/MiguelSR/metal-atlas)"
 COURTESY_DELAY = 0.8  # seconds to wait after every successful Metal Archives request
 
 

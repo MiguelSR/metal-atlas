@@ -27,6 +27,7 @@ Static site (https://miguelsr.js.org/metal-atlas/, repo `MiguelSR/metal-atlas`, 
 
 **Metal Archives**
 - Requests go through **curl** (Cloudflare accepts it; MA also answers from GitHub runners, checked 2026-11-23). Keep the **0.8 s courtesy delay** and retries; never lower them.
+- **User agent: honest, not a fake browser** (owner, 2026-11-24): `MetalAtlas/1.0 (+https://github.com/MiguelSR/metal-atlas)` in `net.py`. Accepted by Cloudflare locally and from GitHub runners. Never put the owner's e-mail in it (public repo).
 - Blank `yearCreationFrom/To` in the advanced search includes bands without a year (164k → all 202k).
 - "What's new/updated" lists give times in MA server time (~6 h behind Spain) and without year → `update` goes back one extra day.
 - **A review is identified by (album id, user id)**: the last number of a review URL is the *user* id, not a review id (a past bug counted 0 new reviews because of this).
