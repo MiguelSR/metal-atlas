@@ -97,7 +97,7 @@ async function main(): Promise<void> {
   const gameButton = $("mode");
   const oracleButton = $("omode");
   const game = new GameView($("game"), state, () => setMode("map"));
-  const oracle = new OracleView($("oracle"), state, player);
+  const oracle = new OracleView($("oracle"), state, player, lang);
   function setMode(mode: Mode): void {
     document.body.classList.toggle("game-on", mode === "game");
     document.body.classList.toggle("oracle-on", mode === "oracle");

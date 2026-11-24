@@ -72,7 +72,7 @@ Ask about the bands in English or Spanish: *"Which country has the most black me
 - **Everything runs in the browser.** A small language model turns the question into a structured query (JSON); the page runs it on `oracle.json`. No server, no API key, and questions don't leave the computer.
 - **Models:** Chrome's built-in **Gemini Nano** (Prompt API, Chrome 148+ on desktop; Chrome downloads it once, ~4 GB) or, in other browsers with WebGPU, **Qwen3.5-2B** through **WebLLM** (~1.3 GB from Hugging Face, cached; 1–2 minutes to load on each visit). Nothing is downloaded until the viewer presses the button, except Gemini Nano when Chrome already has it. Without a model, the rules alone read the question (see below).
 - **The model only translates, and the question has the last word.** Small models invent filters nobody asked for (a country, a genre, a sort) and miss plain cues, so `refine` (web/src/oracle/refine.ts) reads the explicit cues with rules (years and decades, status, "how many", "which country… most", lineups, albums, the oldest/best rated…) and keeps what the model adds only when the question backs it. The model's strength is translating names, places and themes ("Nueva Orleans" -> New Orleans, "guerra" -> war).
-- **An intro panel** explains this the first time (slow at first, what it knows and what it doesn't); "How does it work?" shows it again. Example questions are one click away.
+- **An intro panel** explains this the first time (slow at first, what it knows and what it doesn't); "How does it work?" shows it again. **Eight example questions** are one click away, picked at random each time (🎲 for others) from 585 per language generated from the data by `npm run examples` (`web/eval/make-examples.ts`): templates filled with real genres, countries, cities, themes, bands and labels, each kept only if the rules alone read it as intended and the answer is satisfying (at least 3 bands, a lineup with that member, albums…).
 - **Every answer shows how the question was understood** (chips) and how long it took, with which model.
 - **What it can answer:** lists of bands (by genre words, country, place, formation years, status, lyrical themes, label, member), counts, rankings (by country, genre, label, place, year, decade, status), sorted by relevance, reviews, rating or age; the current lineup and the discography of the ~6,000 game bands. **What it can't (yet):** lyrics, songs, former members, similar bands, covers: it says so instead of guessing.
 - **Quality**, measured with `npm run eval --prefix web` (headless Chrome, 72 questions in `web/eval/`): on questions written after the rules (an honest test), Gemini Nano + rules got 17/20 right; Gemini Nano alone 9/20; the rules alone 17/20. Gemini Nano takes ~1.4 s per question, Qwen3.5-2B ~6 s.
@@ -387,7 +387,8 @@ pre-commit run --all-files     # every check
 pytest                         # Python tests
 black metal_atlas tests        # format Python
 npm run check --prefix web     # front end: prettier --check, tsc, eslint, vitest
-npm run eval --prefix web -- --backend chrome|webllm [--set holdout]   # score the Oracle's model (headless Chrome)
+npm run eval --prefix web -- --backend chrome|webllm [--set holdout|examples]   # score the Oracle's model (headless Chrome)
+npm run examples --prefix web  # regenerate the Oracle's example questions from map/site/oracle.json
 npm run format --prefix web    # format the front end
 ```
 

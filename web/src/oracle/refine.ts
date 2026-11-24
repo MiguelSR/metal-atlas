@@ -154,6 +154,63 @@ const RUSSIAN = new Set(["ruso", "rusa", "rusos", "rusas"]);
 /** Spanish words for common lyrical themes (folded stems) -> the English stem Metal Archives uses. */
 const THEME_WORDS: [stem: string, english: string][] = [
   ["satan", "satan"],
+  ["anticristian", "anti-christian"],
+  ["cristian", "christian"],
+  ["catolic", "catholic"],
+  ["biblia", "bibl"],
+  ["biblic", "bibl"],
+  ["dios", "god"],
+  ["jesus", "jesus"],
+  ["cristo", "christ"],
+  ["iglesia", "church"],
+  ["cielo", "heaven"],
+  ["infierno", "hell"],
+  ["angel", "angel"],
+  ["diablo", "devil"],
+  ["salvacion", "salvation"],
+  ["redencion", "redemption"],
+  ["fe", "faith"],
+  ["esperanza", "hope"],
+  ["alma", "soul"],
+  ["locura", "madness"],
+  ["enfermedad", "disease"],
+  ["droga", "drug"],
+  ["sexo", "sex"],
+  ["fiesta", "party"],
+  ["rebel", "rebel"],
+  ["libertad", "freedom"],
+  ["anarqu", "anarch"],
+  ["sociedad", "societ"],
+  ["corrupci", "corruption"],
+  ["injustici", "injustice"],
+  ["guerrer", "warrior"],
+  ["batalla", "battle"],
+  ["gloria", "glory"],
+  ["caballer", "knight"],
+  ["templari", "templar"],
+  ["cruzada", "crusade"],
+  ["egipt", "egypt"],
+  ["azteca", "aztec"],
+  ["tecnolog", "technolog"],
+  ["extraterrest", "alien"],
+  ["ovni", "ufo"],
+  ["conspira", "conspira"],
+  ["asesin", "murder"],
+  ["tortura", "torture"],
+  ["canibal", "cannibal"],
+  ["cadaver", "corpse"],
+  ["putrefac", "decay"],
+  ["misantrop", "misanthrop"],
+  ["misticism", "mystic"],
+  ["espiritual", "spiritual"],
+  ["chaman", "shaman"],
+  ["nieve", "snow"],
+  ["montana", "mountain"],
+  ["lobo", "wolf"],
+  ["noche", "night"],
+  ["luna", "moon"],
+  ["oceano", "ocean"],
+  ["mar", "sea"],
   ["guerra", "war"],
   ["belic", "war"],
   ["muerte", "death"],
@@ -172,7 +229,6 @@ const THEME_WORDS: [stem: string, english: string][] = [
   ["terror", "horror"],
   ["politic", "politic"],
   ["religi", "religion"],
-  ["anticristian", "anti-christian"],
   ["misantrop", "misanthrop"],
   ["tristeza", "sadness"],
   ["soledad", "loneliness"],
@@ -207,7 +263,8 @@ const THEME_WORDS: [stem: string, english: string][] = [
 /** A theme word in the English Metal Archives uses: Spanish common themes translated, others kept. */
 export function themeWord(word: string): string {
   const folded = fold(word);
-  return THEME_WORDS.find(([stem]) => folded.startsWith(stem))?.[1] ?? folded;
+  // short words must match whole ("fe", "mar"), longer ones as a stem ("cristianismo")
+  return THEME_WORDS.find(([stem]) => (stem.length < 4 ? folded === stem : folded.startsWith(stem)))?.[1] ?? folded;
 }
 
 const ROLES: [RegExp, string][] = [
@@ -255,7 +312,10 @@ const GROUP_WORDS: [RegExp, Group][] = [
 ];
 
 const SORTS: [RegExp, Sort][] = [
-  [/mas antigu|oldest|earliest|veteran|pioner|pioneer/, "oldest"],
+  [
+    /mas antigu|oldest|earliest|veteran|pioner|pioneer|se form\w* (antes|primero)|formad[oa]s? (antes|primero)|\bprimer[oa]? (grupo|banda)|\bfirst band|formed first/,
+    "oldest",
+  ],
   [/mas (nuev|recient|joven)|newest|youngest|latest|\bultim|most recent|\blast\b/, "newest"],
   [/\bmejor|\bbest\b|top rated|highest rated|valorad|puntuad/, "rating"],
   [/mas rese|most review|mas popular|most popular|mas conocid|best known|famos|famous/, "reviews"],
@@ -335,14 +395,19 @@ export function countriesIn(q: string, vocab: Vocabulary): string[] {
 
 /** The longest run of the original words (each capitalized, or a connector inside) that `accept` takes. */
 function namedIn(question: string, accept: (folded: string) => boolean): string | null {
-  const tokens = question.split(/[\s¿?¡!,;:"“”()]+/).filter(Boolean);
+  // possessives belong to the name before them: "Cannibal Corpse's first album"
+  const tokens = question
+    .split(/[\s¿?¡!,;:"“”()]+/)
+    .filter(Boolean)
+    .map((token) => token.replace(/['’]s?$/, ""));
   let best: string | null = null;
   for (let i = 0; i < tokens.length; i++) {
     const first = tokens[i]!;
     if (!/^[\p{Lu}\p{N}]/u.test(first) || NOT_A_NAME.has(fold(first))) continue;
     for (let j = i; j < tokens.length && j < i + 6; j++) {
       const token = tokens[j]!;
-      if (j > i && !/^[\p{Lu}\p{N}]/u.test(token) && !CONNECTORS.has(token.toLowerCase())) break;
+      // lowercase words may sit inside a name ("Darker than Black Records"); the data decides
+      if (j > i && !/^[\p{Lu}\p{N}]/u.test(token) && !CONNECTORS.has(token.toLowerCase()) && j === i + 5) break;
       const candidate = tokens.slice(i, j + 1).join(" ");
       if (accept(fold(candidate)) && (!best || candidate.length > best.length)) best = candidate;
     }
@@ -375,8 +440,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
     /quien(es)? (toca|tocan|canta|cantan|es el|es la|son|esta|estan)|who(?: is|'s| are|s)? (?:plays?|sings?|the)|\b(?:bajista|baterista|bateria|guitarrista|cantante|vocalista|teclista|bassist|drummer|guitarist|singer|vocalist|keyboardist) (?:de|of|in|en)\b|\bmiembros|\bintegrantes|formacion|members|line-?up/.test(
       q,
     );
-  const albums =
-    /\bdiscos?\b|\balbum|discografia\b|discography|\beps?\b|\bdemos?\b|\blps?\b|\brecords?\b(?! label)/.test(q);
+  const albums = /\bdiscos?\b|\balbum|discografia\b|discography|\beps?\b|\bdemos?\b|\blps?\b/.test(q);
   const count = /cuant[oa]s|how many|number of|numero de/.test(q);
   let group: Group | undefined;
   if (/\bmas\b|\bmost\b|predomin|mayor|more|top\b|ranking|clasificacion/.test(q)) {
@@ -394,6 +458,8 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   else if (albums) query.intent = "albums";
   else if (group) query.intent = "top";
   else if (count) query.intent = "count";
+  // a count only when the question asks for one ("how many"); the model sometimes counts a plain list
+  if (query.intent === "count" && !count) query.intent = "bands";
   // the model gave up but no cue says the data can't answer: try as a band search (undone at the end if no filter)
   if (query.intent === "unsupported") query.intent = "bands";
   if (query.intent === "top") query.groupBy = group ?? model.groupBy ?? "country";
@@ -424,7 +490,16 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   if (!bandIsAsked && !query.member) {
     const labelAsked = /\bsellos?\b|\blabels?\b|discografica|\brecords\b/.test(q);
     // a capitalized run that is a label: only with two words or more, or if the question talks about labels
-    const named = namedIn(question, (n) => vocab.isLabel(n) && (labelAsked || n.includes(" ")) && !vocab.country(n));
+    const mentioned = countriesIn(q, vocab).map(fold);
+    const named = namedIn(
+      question,
+      (n) =>
+        vocab.isLabel(n) &&
+        (labelAsked || n.includes(" ")) &&
+        !vocab.country(n) &&
+        !mentioned.some((c) => c.includes(n)) &&
+        !words(n).every((w) => GENRE_WORDS.has(w) || w === "metal" || w === "rock"),
+    );
     const label = model.label && backed(q, model.label, 99) ? model.label : named;
     if (label) query.label = label;
   }
@@ -440,11 +515,12 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   // words are the fallback
   const article = "(?:(?:la|el|los|las|the|a)\\s+)?";
   const asked = new RegExp(
-    `(?:hablen|hable|hablan|traten|trate|tratan|cantan|cantar|letras|tematica|tema)\\s+(?:de|sobre|acerca de)\\s+${article}([\\p{L}-]+)|\\b(?:about|sobre)\\s+${article}([\\p{L}-]+)|tematica\\s+([\\p{L}-]+)`,
+    `(?:(?:habl|trat|cant)(?:a|an|en|e|o|ar|aron|aba|aban|ado|ando)|letras|tematicas?|temas?|themes?|sings?|sang|writes?|wrote)\\s+(?:de|del|sobre|acerca de|about|of)\\s+${article}([\\p{L}-]+)|\\b(?:about|sobre)\\s+${article}([\\p{L}-]+)|tematica\\s+([\\p{L}-]+)`,
     "u",
   ).exec(q);
   const aboutThemes =
-    asked !== null || /\b(tematica|temas|letras|lyrics|themes?|hablen|hablan|traten|tratan|cantan)\b/.test(q);
+    asked !== null ||
+    /\b(tematicas?|temas|letras|lyrics|themes?|(?:habl|trat|cant)(?:a|an|en|e|o|ar|aron|aba|aban|ado|ando))\b/.test(q);
   const themes = aboutThemes ? [...new Set((model.themes ?? []).map(themeWord))] : [];
   if (!themes.length && asked) themes.push(themeWord(asked[1] ?? asked[2] ?? asked[3]!));
   if (themes.length) query.themes = themes;

@@ -6,11 +6,12 @@
 
 import { getJson, lazy } from "../data";
 import { bandUrl, esc } from "../format";
-import type { Translate } from "../i18n";
+import type { Lang, Translate } from "../i18n";
 import type { PreviewPlayer } from "../player";
 import type { AppState } from "../state";
 import { type OracleFile, OracleIndex } from "./data";
 import { describeQuery } from "./describe";
+import { EXAMPLES } from "./examples";
 import { eyeSvg } from "./eye";
 import { type Answer, OracleEngine, type Result } from "./engine";
 import { type Availability, type Translator, availability, chromeTranslator, webLlmTranslator } from "./models";
@@ -18,6 +19,15 @@ import { type Query, STATUSES, parseQuery } from "./query";
 import { refine } from "./refine";
 
 const INTRO_KEY = "ma-oracle-intro";
+const EXAMPLE_COUNT = 8;
+
+/** `n` different items, at random. */
+export function pickRandom<T>(items: readonly T[], n: number, random: () => number = Math.random): T[] {
+  const pool = [...items];
+  const picked: T[] = [];
+  while (picked.length < n && pool.length) picked.push(pool.splice(Math.floor(random() * pool.length), 1)[0]!);
+  return picked;
+}
 const WEBLLM_KEY = "ma-oracle-webllm";
 
 type ModelState =
@@ -60,6 +70,7 @@ export class OracleView {
   private showIntro = !stored(INTRO_KEY);
   private dataState: "loading" | "ready" | "error" = "loading";
   private busy = false;
+  private examples: readonly string[] = [];
   private readonly asked: Asked[] = [];
   private loaded: { index: OracleIndex; engine: OracleEngine } | null = null;
   private readonly load = lazy(async () => {
@@ -71,6 +82,7 @@ export class OracleView {
     private readonly element: HTMLElement,
     private readonly state: AppState,
     private readonly player: PreviewPlayer,
+    private readonly lang: Lang,
   ) {
     element.addEventListener("click", (e) => this.onClick(e));
     element.addEventListener("submit", (e) => {
@@ -87,6 +99,7 @@ export class OracleView {
   show(on: boolean): void {
     this.element.hidden = !on;
     if (!on) return;
+    this.shuffleExamples();
     this.render();
     if (this.dataState !== "ready") {
       this.dataState = "loading";
@@ -102,6 +115,11 @@ export class OracleView {
   private setData(state: "ready" | "error"): void {
     this.dataState = state;
     this.render();
+  }
+
+  /** Eight example questions picked at random from the generated list. */
+  private shuffleExamples(): void {
+    this.examples = pickRandom(EXAMPLES[this.lang], EXAMPLE_COUNT);
   }
 
   // ---------- model ----------
@@ -163,6 +181,7 @@ export class OracleView {
       entry.error = error instanceof Error ? error.message : String(error);
     }
     this.busy = false;
+    this.shuffleExamples();
     this.render();
     const input = this.element.querySelector<HTMLInputElement>("#oq");
     if (input) {
@@ -183,6 +202,10 @@ export class OracleView {
       case "example":
         void this.ask(target.textContent);
         break;
+      case "shuffle":
+        this.shuffleExamples();
+        this.render();
+        break;
       case "load":
         void this.loadModel();
         break;
@@ -200,7 +223,7 @@ export class OracleView {
           .join("")}</ul><button class="gbtn primary" data-o="intro">${t("oGotIt")}</button></section>`
       : "";
     const disabled = this.busy || this.dataState !== "ready" ? "disabled" : "";
-    const examples = t("oExamples")
+    const examples = this.examples
       .map((q) => `<button type="button" class="oex" data-o="example" ${disabled}>${esc(q)}</button>`)
       .join("");
     this.element.innerHTML = `<div class="ocard">
@@ -210,7 +233,7 @@ export class OracleView {
       ${intro}
       <form class="gform oform"><input id="oq" autocomplete="off" placeholder="${esc(t("oPh"))}" aria-label="${esc(t("oTitle"))}" ${disabled}>
         <button class="gbtn primary" ${disabled}>${t("oAsk")}</button></form>
-      <div class="oexs"><span>${t("oTry")}:</span>${examples}</div>
+      <div class="oexs"><span>${t("oTry")}:</span>${examples}<button type="button" class="oex oshuffle" data-o="shuffle" title="${t("oShuffle")}" aria-label="${t("oShuffle")}">🎲</button></div>
       <div class="ostatus" id="ostatus"></div>
       <ol class="oanswers">${this.asked.map((a) => this.answerHtml(a)).join("")}</ol>
     </div>`;

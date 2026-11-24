@@ -3,45 +3,27 @@
  * The page has a "start" button (creating a Chrome session can need a click) and writes its log into #__out.
  */
 
-import { fold } from "../src/format";
 import { type OracleFile, OracleIndex } from "../src/oracle/data";
 import { OracleEngine } from "../src/oracle/engine";
 import { type Translator, chromeTranslator, webLlmTranslator } from "../src/oracle/models";
+import { EXAMPLES } from "../src/oracle/examples";
+import { pickRandom } from "../src/oracle/oracle-view";
 import { type Query, parseQuery } from "../src/oracle/query";
 import { refine } from "../src/oracle/refine";
 import { HOLDOUT } from "./holdout";
 import { QUESTIONS } from "./questions";
+import { mismatches } from "./compare";
 
 const out = document.getElementById("__out")!;
 const log = (line: string): void => {
   out.textContent += line + "\n";
 };
 
-const same = (a: unknown, b: unknown): boolean => {
-  if (Array.isArray(a) && Array.isArray(b)) {
-    const set = (xs: unknown[]): string =>
-      xs
-        .map((x) => fold(String(x)))
-        .sort()
-        .join("|");
-    return set(a) === set(b);
-  }
-  if (typeof a === "string" && typeof b === "string") return fold(a) === fold(b);
-  return a === b;
-};
-
-/** The expected fields that the query gets wrong. */
-export function mismatches(query: Query, expected: Partial<Query>): string[] {
-  return Object.entries(expected).flatMap(([key, value]) =>
-    same(query[key as keyof Query], value) ? [] : [`${key}: ${JSON.stringify(query[key as keyof Query])}`],
-  );
-}
-
 async function run(): Promise<void> {
   const params = new URLSearchParams(location.search);
   const backend = params.get("backend") ?? "chrome";
   const only = params.get("only");
-  const questions = params.get("set") === "holdout" ? HOLDOUT : QUESTIONS;
+  const set = params.get("set");
   let t0 = performance.now();
   const progress = (f: number): void => log(`progress ${Math.round(f * 100)}%`);
   const translator: Translator =
@@ -51,6 +33,13 @@ async function run(): Promise<void> {
   log(`model ready (${backend}) in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   const index = new OracleIndex((await (await fetch("oracle.json")).json()) as OracleFile);
   const engine = new OracleEngine(index);
+  // "examples": a random sample of the generated examples, expected to read as they do without a model
+  const questions: [string, Partial<Query>][] =
+    set === "holdout"
+      ? HOLDOUT
+      : set === "examples"
+        ? pickRandom([...EXAMPLES.es, ...EXAMPLES.en], 60).map((q) => [q, refine(q, { intent: "bands" }, index)])
+        : QUESTIONS;
 
   let passed = 0;
   let modelOnly = 0;

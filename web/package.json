@@ -16,7 +16,8 @@
     "test": "vitest run",
     "typecheck-lint-test": "npm run typecheck && npm run lint && npm run test",
     "check": "npm run format:check && npm run typecheck-lint-test",
-    "eval": "node scripts/eval-oracle.mjs"
+    "eval": "node scripts/eval-oracle.mjs",
+    "examples": "node scripts/make-examples.mjs"
   },
   "dependencies": {
     "d3-geo": "^3.1.2",

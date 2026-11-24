@@ -4,6 +4,8 @@ import { translator } from "../src/i18n";
 import { type OracleFile, OracleIndex } from "../src/oracle/data";
 import { describeQuery } from "../src/oracle/describe";
 import { OracleEngine, roleNeedle } from "../src/oracle/engine";
+import { EXAMPLES } from "../src/oracle/examples";
+import { pickRandom } from "../src/oracle/oracle-view";
 import { type Query, extractJson, parseQuery } from "../src/oracle/query";
 import { type Vocabulary, countriesIn, refine, themeWord, yearsIn } from "../src/oracle/refine";
 
@@ -16,7 +18,7 @@ function oracleFile(): OracleFile {
     dicts: {
       genre: ["Black Metal", "Thrash Metal", "Death/Thrash Metal", "Melodic Death Metal"],
       location: ["Bergen, Vestland", "Murcia", "Bay Area, California", "Seville, Andalusia"],
-      themes: ["Satanism, Darkness", "War, Death", "Tolkien, Fantasy"],
+      themes: ["Satanism, Darkness", "War, Death", "Tolkien, Fantasy, Christianity", "Anti-Christianity"],
       label: ["Nuclear Blast", "Century Media"],
     },
     id: [10, 20, 30, 40, 50],
@@ -28,7 +30,7 @@ function oracleFile(): OracleFile {
     g: [[0], [2], [1, 2], [1], [2]],
     country: [[0], [2], [1], [1], [1]],
     location: [0, 2, 1, 3, -1],
-    themes: [0, 1, 1, 2, -1],
+    themes: [0, 1, 1, 2, 3],
     label: [1, 0, -1, 0, -1],
     reviews: [120, 300, 2, 4, 0],
     rating: [85, 80, 60, 95, 0],
@@ -134,6 +136,11 @@ describe("engine", () => {
     expect(run({ intent: "albums", album: "reign in blood" })).toMatchObject({ total: 1, bandsWithoutData: 4 });
   });
 
+  it("tells themes from their anti- versions", () => {
+    expect(run({ intent: "bands", themes: ["christian"] })).toMatchObject({ rows: [3] });
+    expect(run({ intent: "bands", themes: ["anti-christian"] })).toMatchObject({ rows: [4] });
+  });
+
   it("searches an unknown country as a place", () => {
     const result = engine.run({ intent: "bands", country: "Andalusia" });
     expect(result.answer).toMatchObject({ rows: [3] });
@@ -177,6 +184,10 @@ describe("refine: the question's own cues", () => {
     expect(themeWord("satánica")).toBe("satan");
     expect(themeWord("guerra")).toBe("war");
     expect(themeWord("Lovecraft")).toBe("lovecraft");
+    expect(themeWord("cristianismo")).toBe("christian");
+    expect(themeWord("anticristianismo")).toBe("anti-christian");
+    expect(themeWord("mar")).toBe("sea");
+    expect(themeWord("marte")).toBe("marte");
   });
 
   it("reads lists, counts and rankings", () => {
@@ -238,6 +249,22 @@ describe("refine: the question's own cues", () => {
     expect(rules("¿Qué canción de Slayer es la más larga?").missing).toBe("tracks");
     expect(rules("Bandas cuyas letras traten sobre Lovecraft")).toEqual({ intent: "bands", themes: ["lovecraft"] });
     expect(rules("Bandas que hablen de Tolkien")).toEqual({ intent: "bands", themes: ["tolkien"] });
+    expect(rules("¿Cuál fue el grupo que habló de cristianismo que se formó antes?")).toEqual({
+      intent: "bands",
+      themes: ["christian"],
+      sort: "oldest",
+    });
+    expect(rules("¿Cuál fue el primer grupo de doom metal que habló de cristianismo?")).toEqual({
+      intent: "bands",
+      themes: ["christian"],
+      genre: ["doom"],
+      sort: "oldest",
+    });
+    expect(rules("¿Quién es el cantante de Iron Maiden?")).toEqual({
+      intent: "lineup",
+      band: "Iron Maiden",
+      role: "vocals",
+    });
   });
 });
 
@@ -315,5 +342,21 @@ describe("describeQuery", () => {
       "formadas 1990–1999",
       "top 5",
     ]);
+  });
+});
+
+describe("example questions", () => {
+  it("has hundreds per language, all different", () => {
+    for (const list of Object.values(EXAMPLES)) {
+      expect(list.length).toBeGreaterThanOrEqual(300);
+      expect(new Set(list).size).toBe(list.length);
+    }
+  });
+
+  it("picks different ones at random", () => {
+    const picked = pickRandom(["a", "b", "c", "d"], 3, () => 0.5);
+    expect(picked).toHaveLength(3);
+    expect(new Set(picked).size).toBe(3);
+    expect(pickRandom(["a"], 8)).toEqual(["a"]);
   });
 });

@@ -131,7 +131,7 @@ export class OracleEngine {
     if (query.location) inDict("location", [query.location]);
     if (query.themes) {
       // any of the words: models list synonyms ("space", "universe"), and several themes rarely all appear
-      const hits = query.themes.map((word) => this.index.dictMatches("themes", [word]));
+      const hits = query.themes.map((word) => this.index.themeMatches(word));
       const column = data.themes;
       tests.push((row) => hits.some((h) => h[column[row]!] === 1));
     }

@@ -2,7 +2,7 @@
 /**
  * Scores the Oracle's model on eval/questions.ts in headless Chrome (real time, driven over the DevTools protocol).
  *
- *   npm run eval -- [--backend chrome|webllm] [--set questions|holdout] [--model WEBLLM_ID] [--only 0,5,7] [--timeout 1800] [--profile DIR]
+ *   npm run eval -- [--backend chrome|webllm] [--set questions|holdout|examples] [--model WEBLLM_ID] [--only 0,5,7] [--timeout 1800] [--profile DIR]
  *
  * Needs map/site/oracle.json (`python -m metal_atlas oracle`). The Chrome profile (default ~/.cache/metal-atlas-eval)
  * keeps the downloaded models between runs: Gemini Nano (~4 GB, downloaded by Chrome on the first run; copying

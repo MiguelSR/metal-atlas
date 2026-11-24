@@ -40,6 +40,7 @@ export const EXAMPLES: [question: string, query: Query][] = [
     { intent: "top", genre: ["death"], country: "Sweden", groupBy: "label", limit: 5 },
   ],
   ["Bandas que hablen de Tolkien", { intent: "bands", themes: ["tolkien"] }],
+  ["Grupos que hablen de la guerra", { intent: "bands", themes: ["war"] }],
   ["¿Quién es el batería de Slayer?", { intent: "lineup", band: "Slayer", role: "drums" }],
   ["Who plays in Iron Maiden?", { intent: "lineup", band: "Iron Maiden" }],
   ["¿En qué bandas toca Mikael Åkerfeldt?", { intent: "bands", member: "Mikael Åkerfeldt" }],
