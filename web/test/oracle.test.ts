@@ -117,7 +117,9 @@ describe("engine", () => {
     expect(roleNeedle("batería")).toBe("drum");
     expect(run({ intent: "lineup", band: "Slayer", role: "guitars" })).toEqual({
       kind: "lineup",
-      lineups: [{ row: 1, header: "Last known", members: [["Kerry King", "Guitars"]] }],
+      lineups: [
+        { row: 1, header: "Last known", members: [["Kerry King", "Guitars"]], all: oracleFile().lineups["1"]![1] },
+      ],
       bandsWithoutData: 1, // the Spanish Slayer
     });
     expect(run({ intent: "bands", member: "fenriz" })).toMatchObject({ rows: [0] });

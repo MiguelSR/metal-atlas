@@ -330,10 +330,10 @@ export class OracleView {
           : "";
         if (!answer.lineups.length) return `<p class="omsg">${t("oNoBands")}</p>${missing}`;
         const blocks = answer.lineups
-          .map(({ row, header, members }) => {
-            const list = members.length
-              ? `<ul class="omembers">${members.map(([name, role]) => `<li><b>${esc(name)}</b> <small>${esc(role)}</small></li>`).join("")}</ul>`
-              : `<p class="omsg">${t("oNoMembers")}</p>`;
+          .map(({ row, header, members, all }) => {
+            const items = (list: [string, string][]): string =>
+              `<ul class="omembers">${list.map(([name, role]) => `<li><b>${esc(name)}</b> <small>${esc(role)}</small></li>`).join("")}</ul>`;
+            const list = members.length ? items(members) : `<p class="onote">${t("oNoMembers")}</p>${items(all)}`;
             return `<div class="olineup"><div class="osum">${this.bandLink(row)} ${this.player.button(index.data.name[row]!, index.data.id[row]!)} <small>${esc(t("lineupHdr", header))}</small></div>${list}</div>`;
           })
           .join("");

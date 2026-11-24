@@ -252,7 +252,8 @@ function english(nf: (n: number) => string) {
     oShowing: (n: number) => `showing the first ${nf(n)}`,
     oNoBands: "No band matches.",
     oNoAlbums: "No album matches.",
-    oNoMembers: "No member matches.",
+    oNoMembers:
+      "Nobody in this lineup plays that (Metal Archives lists live and session musicians apart). The whole lineup:",
     oNoLineupData: (n: number) =>
       `Lineups are only known for the 6,000 best known bands; ${nf(n)} ${plural(n, "band", "bands")} found ${plural(n, "has", "have")} none.`,
     oNoAlbumData: (n: number) =>
@@ -527,7 +528,8 @@ function spanish(nf: (n: number) => string): Messages {
     oShowing: (n) => `se muestran las ${nf(n)} primeras`,
     oNoBands: "Ninguna banda cumple eso.",
     oNoAlbums: "Ningún disco cumple eso.",
-    oNoMembers: "Ningún miembro cumple eso.",
+    oNoMembers:
+      "Nadie de esta formación toca eso (Metal Archives pone aparte a los músicos de directo y de sesión). La formación completa:",
     oNoLineupData: (n) =>
       `Solo se conoce la formación de las 6.000 bandas más conocidas; ${nf(n)} de las encontradas no la ${plural(n, "tiene", "tienen")}.`,
     oNoAlbumData: (n) =>

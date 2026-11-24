@@ -12,7 +12,10 @@ export interface AlbumHit {
 export interface LineupHit {
   row: number;
   header: string;
+  /** the members that match the member and role filters */
   members: [string, string][];
+  /** the whole lineup, shown when no member matches */
+  all: [string, string][];
 }
 
 export type Answer =
@@ -272,7 +275,9 @@ export class OracleEngine {
         bandsWithoutData++;
         continue;
       }
-      if (lineups.length < MAX_LINEUPS) lineups.push({ row, header: lineup[0], members: this.membersOf(row, query) });
+      if (lineups.length < MAX_LINEUPS) {
+        lineups.push({ row, header: lineup[0], members: this.membersOf(row, query), all: lineup[1] });
+      }
     }
     return { kind: "lineup", lineups, bandsWithoutData };
   }
