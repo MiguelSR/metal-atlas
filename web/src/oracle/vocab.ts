@@ -266,6 +266,7 @@ export const THEME_CONCEPTS: [question: string, data: string][] = [
     "peliculas de terror|cine de terror|horror movies|horror films|b-movies",
     "horror movie|horror film|b-movie|movies|films",
   ],
+  ["cine negro|film noir|noir|neo-noir|neo noir", "film noir|neo-noir|noir$"],
   ["cine|peliculas|movies|films|cinema", "movie|film|cinema"],
   ["videojuegos|video games|videojuego|gaming", "video game|game|dungeons|warhammer|elder scrolls|zelda"],
   ["warhammer|40k", "warhammer"],

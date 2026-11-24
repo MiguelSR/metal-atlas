@@ -69,6 +69,7 @@ export class OracleIndex implements Vocabulary {
   private labelNames: Set<string> | null = null;
   private readonly countryByName = new Map<string, number>();
   private readonly foldedNames: string[];
+  private places: Map<string, string> | undefined;
   private readonly folded = new Map<keyof OracleFile["dicts"], string[]>();
   private readonly terms = new Map<number, string[]>();
 
@@ -96,6 +97,35 @@ export class OracleIndex implements Vocabulary {
   country(name: string): string | null {
     const i = this.countryIndex(name);
     return i === null ? null : this.data.countries[i]!;
+  }
+
+  /**
+   * The place a folded name is in the bands' locations ("motril" -> "Motril"): a town or region named by 3+ bands,
+   * as Metal Archives writes it. Null otherwise.
+   */
+  place(name: string): string | null {
+    if (!this.places) {
+      const counts = new Map<string, { name: string; bands: number }>();
+      const perValue = this.data.dicts.location.map((value) => [
+        ...new Set(
+          value
+            .replace(/\([^)]*\)/g, "")
+            .split(/[;/,]/)
+            .map((part) => part.trim())
+            .filter(Boolean),
+        ),
+      ]);
+      for (const index of this.data.location) {
+        for (const part of perValue[index] ?? []) {
+          const key = fold(part);
+          const entry = counts.get(key) ?? { name: part, bands: 0 };
+          entry.bands++;
+          counts.set(key, entry);
+        }
+      }
+      this.places = new Map([...counts].filter(([, e]) => e.bands >= 3).map(([key, e]) => [key, e.name]));
+    }
+    return this.places.get(name) ?? null;
   }
 
   isBand(name: string): boolean {

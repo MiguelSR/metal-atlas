@@ -266,6 +266,20 @@ describe("refine: the question's own cues", () => {
     expect(refine("Primer disco de doom de España", { intent: "bands" }, fuzzy).band).toBeUndefined();
   });
 
+  it("reads names containing a word, film noir and lowercase places (owner's reports)", () => {
+    expect(rules("Bandas que tengan la palabra witch en el nombre")).toMatchObject({
+      name: "witch",
+      nameMatch: "contains",
+    });
+    expect(rules("bands with Witch in their name")).toMatchObject({ name: "Witch", nameMatch: "contains" });
+    expect(rules("Bandas que hablen de cine negro").themes).toEqual(["film noir"]);
+    const places: Vocabulary = { ...vocab, place: (n) => ({ motril: "Motril", murcia: "Murcia" })[n] ?? null };
+    expect(refine("bandas de motril", { intent: "bands" }, places).location).toBe("Motril");
+    // the model's place only if the question names it
+    expect(refine("bandas de motril", { intent: "bands", location: "Murcia" }, places).location).toBe("Motril");
+    expect(refine("bandas de culto", { intent: "bands", location: "Murcia" }, places).location).toBeUndefined();
+  });
+
   it("reads band names in lowercase, and an unknown one as a band rather than every band", () => {
     expect(rules("primer disco de bathory")).toMatchObject({ intent: "albums", band: "bathory", sort: "oldest" });
     expect(rules("quién canta en iron maiden").band).toBe("iron maiden");

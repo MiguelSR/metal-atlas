@@ -236,4 +236,8 @@ export const QUESTIONS: [question: string, expected: Partial<Query>][] = [
     "primer disco de zzqxwv blorp",
     { intent: "albums", band: "zzqxwv blorp", sort: "oldest", limit: 1, albumType: "Full-length" },
   ],
+  // owner's reports, 2026-11-25
+  ["Bandas que tengan la palabra witch en el nombre", { intent: "bands", name: "witch", nameMatch: "contains" }],
+  ["Bandas que hablen de cine negro", { intent: "bands", themes: ["film noir"] }],
+  ["bandas de motril", { intent: "bands", location: "Motril" }],
 ];

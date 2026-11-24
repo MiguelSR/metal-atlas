@@ -372,6 +372,11 @@ export function makeExamples(
         nameMatch: "contains",
       },
     );
+    add("name-word", `Bandas que tengan la palabra ${word} en el nombre`, `Bands with the word ${word} in their name`, {
+      intent: "bands",
+      name: word,
+      nameMatch: "contains",
+    });
     add(
       "renamed",
       `Bandas de ${gEs} de ${cEs} que cambiaron de nombre`,

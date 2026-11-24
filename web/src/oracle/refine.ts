@@ -17,6 +17,8 @@ const PLACES: Record<string, string> = { ...PLACE_NAMES, "bay area": "Bay Area" 
 /** What the rules need to know about the data. Names are folded (see `fold`). */
 export interface Vocabulary {
   isBand(name: string): boolean;
+  /** A town or region of the bands' locations, as Metal Archives writes it, from a folded name; or null. */
+  place?(name: string): string | null;
   /** The band whose name is closest to a misspelt one, or null. */
   closestBand?(name: string): string | null;
   isLabel(name: string): boolean;
@@ -398,6 +400,8 @@ const UNSIGNED =
 
 /** A band name in quotes, a capitalized run (stopping at prepositions) or one word. */
 const NAME = String.raw`(?:["“'«]([^"”'»]+)["”'»]|([\p{Lu}\p{N}][^\s?¿!,]*(?:\s+(?:(?:and|of|the|&|n')\s+)?(?!(?:en|de|del|from|in|que|y|and|con|with|formad\w*|activ\w*)\b)[\p{Lu}\p{N}][^\s?¿!,]*)*)|([\p{L}\p{N}][^\s?¿!,]*))`;
+/** A quoted name or one word: "with witch in their name" (the case-insensitive NAME would take "with witch"). */
+const ONE_NAME = String.raw`(?:["“'«]([^"”'»]+)["”'»]|([\p{L}\p{N}][^\s?¿!,"”»]*))`;
 const NAME_PATTERNS: [RegExp, NameMatch][] = [
   [
     new RegExp(
@@ -424,6 +428,12 @@ const NAME_PATTERNS: [RegExp, NameMatch][] = [
     "suffix",
   ],
   [new RegExp(String.raw`(?:empiecen?|comiencen?|start|begin)\s+(?:por|con|with)\s+` + NAME, "iu"), "prefix"],
+  // "con la palabra witch en el nombre", "with witch in their name", "bandas con la palabra Witch"
+  [new RegExp(String.raw`(?:la palabra|the word)\s+` + ONE_NAME, "iu"), "contains"],
+  [
+    new RegExp(ONE_NAME + String.raw`\s+(?:en|in)\s+(?:el|su|sus|the|their|its)\s+(?:nombres?|names?)\b`, "iu"),
+    "contains",
+  ],
   [
     new RegExp(
       String.raw`(?:se\s+llam(?:e|en|a|an)|llamad[oa]s?|named|called)\s+(?:exactamente\s+|exactly\s+|igual que\s+)?` +
@@ -614,7 +624,8 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
     query.location = model.country; // a region named as a country ("Scotland")
   }
   const place = Object.keys(PLACES).find((name) => new RegExp(`\\b${name}\\b`).test(q));
-  if (model.location && outside(model.location) && !vocab.country(model.location)) {
+  // the model's place only if the question names it (Gemini Nano once answered "bandas de motril" with Murcia)
+  if (model.location && outside(model.location) && !vocab.country(model.location) && backed(q, model.location)) {
     query.location = PLACES[fold(model.location)] ?? model.location;
   } else if (place && outside(place)) query.location = PLACES[place];
   if (!query.location && (query.intent === "bands" || query.intent === "count" || query.intent === "top")) {
@@ -627,6 +638,26 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
       if (countriesIn(folded, vocab).length) continue;
       query.location = PLACES[folded] ?? candidate;
       break;
+    }
+  }
+  if (!query.location && (query.intent === "bands" || query.intent === "count" || query.intent === "top")) {
+    // "bandas de motril": a lowercase place the data knows, after a preposition, that is nothing else we know
+    const tokens = words(unnamed);
+    search: for (let i = 1; i < tokens.length; i++) {
+      if (!/^(?:de|del|from|in|en)$/.test(tokens[i - 1]!)) continue;
+      for (let j = Math.min(tokens.length, i + 3); j > i; j--) {
+        const phrase = tokens.slice(i, j).join(" ");
+        const genreWord = tokens.slice(i, j).some((w) => GENRE_WORDS.has(GENRE_SYNONYMS[w] ?? w) || w === "metal");
+        if (phrase.length < 4 || NOT_A_NAME.has(phrase) || vocab.country(phrase) || genreWord || !outside(phrase)) {
+          continue;
+        }
+        if (YEAR.test(phrase) || conceptsIn(phrase).length) continue;
+        const place = vocab.place?.(phrase);
+        if (place) {
+          query.location = place;
+          break search;
+        }
+      }
     }
   }
   if (query.location && query.country && fold(query.location) === fold(query.country)) delete query.location;
