@@ -81,3 +81,38 @@ def test_cli_unknown_command_shows_usage():
     with pytest.raises(SystemExit) as exit_info:
         cli.main(["nope"])
     assert "usage: python3 -m metal_atlas" in str(exit_info.value)
+
+
+def test_gh_retries_then_succeeds(monkeypatch):
+    import subprocess
+
+    from metal_atlas import data
+
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        if len(calls) < 3:
+            raise subprocess.CalledProcessError(1, cmd)
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(data.subprocess, "run", fake_run)
+    monkeypatch.setattr(data.time, "sleep", lambda s: None)
+    data.gh("release", "upload", "x", attempts=4)
+    assert len(calls) == 3
+
+
+def test_gh_gives_up(monkeypatch):
+    import subprocess
+
+    import pytest
+
+    from metal_atlas import data
+
+    def fake_run(cmd, **kwargs):
+        raise subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.setattr(data.subprocess, "run", fake_run)
+    monkeypatch.setattr(data.time, "sleep", lambda s: None)
+    with pytest.raises(subprocess.CalledProcessError):
+        data.gh("release", "upload", "x", attempts=2)

@@ -24,6 +24,7 @@ Static site (https://miguelsr.js.org/metal-atlas/, repo `MiguelSR/metal-atlas`, 
 - **The published dataset strips band notes and contact e-mails** (public asset; the site uses neither; `notes` becomes "…" so the relevance score is unchanged). A full local copy: `~/metal_archives_bands.full-2026-11-23.json` (owner's machine only).
 - **Daily job** (`daily.yml`, 05:17 UTC) commits `map/update_state.json` so the repo stays "active" (GitHub disables schedules after 60 idle days) and history records each update. Consequence: always `git pull` before pushing.
 - `update_state.json` is in git; everything else generated is ignored.
+- **Release uploads retry** (4 attempts, 30/60/90 s apart, one asset at a time): the daily run of 2026-11-25 failed on a GitHub 502 after uploading only `state.tar.gz`. A half-done push is harmless: the next run starts from `update_state.json` in git, re-reads those changes and rebuilds the site files.
 
 **Metal Archives**
 - Requests go through **curl** (Cloudflare accepts it; MA also answers from GitHub runners, checked 2026-11-23). Keep the **0.8 s courtesy delay** and retries; never lower them.

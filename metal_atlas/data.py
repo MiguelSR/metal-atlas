@@ -20,6 +20,7 @@ import argparse
 import subprocess
 import tarfile
 import tempfile
+import time
 from pathlib import Path
 
 from . import paths
@@ -69,8 +70,20 @@ def pack() -> None:
         print(f"{name}: {(paths.DIST_DIR / name).stat().st_size / 1e6:.0f} MB")
 
 
-def gh(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["gh", *args], cwd=paths.ROOT, check=True)
+UPLOAD_ATTEMPTS = 4  # GitHub's release API sometimes answers 502 (the daily run of 2026-11-25 failed so)
+
+
+def gh(*args: str, attempts: int = 1, wait: float = 30) -> subprocess.CompletedProcess:
+    """Runs gh; retries ``attempts`` times in all, waiting longer each time (``wait`` s, then twice, …)."""
+    for attempt in range(1, attempts + 1):
+        try:
+            return subprocess.run(["gh", *args], cwd=paths.ROOT, check=True)
+        except subprocess.CalledProcessError:
+            if attempt == attempts:
+                raise
+            print(f"gh {args[0]} {args[1]} failed (attempt {attempt}/{attempts}), retrying in {wait * attempt:.0f} s")
+            time.sleep(wait * attempt)
+    raise AssertionError("unreachable")
 
 
 def push() -> None:
@@ -78,7 +91,8 @@ def push() -> None:
     exists = subprocess.run(["gh", "release", "view", TAG], cwd=paths.ROOT, capture_output=True).returncode == 0
     if not exists:
         gh("release", "create", TAG, "--prerelease", "--title", "Data snapshot", "--notes", RELEASE_NOTES)
-    gh("release", "upload", TAG, str(paths.DIST_DIR / STATE_ARCHIVE), str(paths.DIST_DIR / SITE_ARCHIVE), "--clobber")
+    for name in (STATE_ARCHIVE, SITE_ARCHIVE):  # one by one, so a retry re-sends only the one that failed
+        gh("release", "upload", TAG, str(paths.DIST_DIR / name), "--clobber", attempts=UPLOAD_ATTEMPTS)
 
 
 def pull(only_site: bool = False) -> None:
