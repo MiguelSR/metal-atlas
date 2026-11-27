@@ -4,8 +4,9 @@ The code lives in git; the data does not (it is large and changes every day). It
 release tagged `data`, overwritten on every update, so no history piles up:
 
   state.tar.gz      what the steps need to update the data: the master dataset, review lists and counts, geography
-                    downloads, and the scraper caches (lineups, discographies, iTunes verification)
-  site-data.tar.gz  the site's generated JSON (map/site/*.json, c/, r/), which the publish workflow deploys
+                    downloads, the scraper caches (lineups, discographies, iTunes verification) and every band's
+                    discography (scraper/discographies.jsonl)
+  site-data.tar.gz  the site's generated JSON (map/site/*.json, c/, r/, albums/), which the publish workflow deploys
 
 The published master dataset leaves out two fields the site never uses: band notes (only whether there are any is
 kept, which is what the relevance score needs) and contact e-mails.
@@ -42,10 +43,11 @@ STATE_FILES = [
     paths.MEMBERS_DIR,
     paths.ITUNES_DIR,
     paths.DISCO_DIR,
+    paths.DISCOGRAPHIES,
 ]
 RELEASE_NOTES = "Data for the site and the update steps, replaced on every update. See metal_atlas/data.py."
 # inside map/site
-SITE_FILES = ["bands.json", "index.json", "game.json", "previews.json", "oracle.json", "oracle-albums.json", "c", "r"]
+SITE_FILES = ["bands.json", "index.json", "game.json", "previews.json", "oracle.json", "albums", "c", "r"]
 
 
 def public_records(bands: list[dict]) -> list[dict]:

@@ -1,5 +1,7 @@
+import json
+
 from metal_atlas.build import Band
-from metal_atlas.oracle import Dictionary, oracle_data
+from metal_atlas.oracle import Dictionary, oracle_data, write_album_blocks
 from metal_atlas.jsonio import write_cached
 
 
@@ -38,3 +40,14 @@ def test_oracle_data_is_columnar_by_relevance_with_game_extras(tmp_path):
     assert data["lineups"] == {0: ["Current", [["Ana", "Drums"]]]}
     assert data["albums"] == [[[7, "Demo I", "Demo", 1986]], 0]  # one item per row; 0 = not known
     assert data["status"] == [1, 1] and data["countries"] == ["Spain"] and data["country"] == [[0], [0]]
+
+
+def test_album_blocks_cover_every_row_and_replace_old_ones(tmp_path):
+    folder = tmp_path / "albums"
+    folder.mkdir()
+    (folder / "9.json").write_text("{}")
+    assert write_album_blocks([0, [[1, "A", "Demo", 1990]], 0, 0, [[2, "B", "EP", 2001]]], folder, block=2) == 3
+    blocks = [json.loads((folder / f"{k}.json").read_text()) for k in range(3)]
+    assert [b["from"] for b in blocks] == [0, 2, 4]
+    assert sum((b["a"] for b in blocks), []) == [0, [[1, "A", "Demo", 1990]], 0, 0, [[2, "B", "EP", 2001]]]
+    assert not (folder / "9.json").exists()

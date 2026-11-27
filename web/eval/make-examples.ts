@@ -177,12 +177,12 @@ function satisfying(answer: Answer, query: Query): boolean {
 /** `debug`: also report every rejected question (misread, or with an unsatisfying answer). */
 export function makeExamples(
   file: OracleFile,
-  albums: AlbumsFile,
+  albums: AlbumsFile[],
   debug = false,
   perTemplate = 30,
 ): Record<Lang, string[]> & { report: string[] } {
   const index = new OracleIndex(file);
-  index.setAlbums(albums);
+  for (const block of albums) index.setAlbums(block);
   const engine = new OracleEngine(index);
   const { data } = index;
   const next = random(42);

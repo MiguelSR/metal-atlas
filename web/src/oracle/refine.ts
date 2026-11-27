@@ -341,6 +341,10 @@ function misspeltBand(question: string, vocab: Vocabulary): { band: string; writ
 }
 
 const PREPOSITION = /^(?:de|del|of|by|en|in)$/;
+/** "bandas de Motril", "bands from Texas": the words after it name where the bands are from, not a band (no `i`
+ * flag: it would make \p{Lu} match lowercase too) */
+const OF_BANDS =
+  /(?:^|[\s¿¡])(?:[Bb]andas?|[Gg]rupos?|[Bb]ands?|[Gg]roups?)\s+(?:de|del|from|of|en|in)\s+[^\s?¿!,]+(?:\s+(?:(?:de|del|of|the|y|and)\s+)?[\p{Lu}][^\s?¿!,]*)*/gu;
 /** a year, never a band name here ("discos de thrash de 1986"; there is a band called 1986) */
 const YEAR = /^(?:19|20)\d\d$/;
 /** words that start what follows "de" without being a band: "discos de bandas de…" */
@@ -536,10 +540,14 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   }
   /** the band name as the question writes it, when it differs (misspelt) */
   let written: string | undefined;
+  // "discos de bandas de Motril": what follows "bandas de" is a place (or a genre), never the band asked about
+  const bandText = question.replace(OF_BANDS, " ");
   if (bandIsAsked && !query.album) {
     const band = model.band && vocab.isBand(fold(model.band)) && backed(q, model.band, 99) ? model.band : null;
-    const exact = namedIn(question, (name) => vocab.isBand(name) && !YEAR.test(name)) ?? bandAfterPreposition(q, vocab);
-    const misspelt = misspeltBand(question, vocab);
+    const exact =
+      namedIn(bandText, (name) => vocab.isBand(name) && !YEAR.test(name)) ??
+      bandAfterPreposition(fold(bandText), vocab);
+    const misspelt = misspeltBand(bandText, vocab);
     // "Black Sabath": the misspelt full name beats "Black", the band found inside it
     if (band) query.band = band;
     else if (exact && !(misspelt && misspelt.written.length > exact.length && vocab.isBand(fold(misspelt.band)))) {
@@ -628,7 +636,11 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   if (model.location && outside(model.location) && !vocab.country(model.location) && backed(q, model.location)) {
     query.location = PLACES[fold(model.location)] ?? model.location;
   } else if (place && outside(place)) query.location = PLACES[place];
-  if (!query.location && (query.intent === "bands" || query.intent === "count" || query.intent === "top")) {
+  // album and lineup questions about no band: "discos de bandas de Motril" (only places the data knows, so an unknown
+  // band's name isn't read as one)
+  const placeAsked = query.intent === "bands" || query.intent === "count" || query.intent === "top";
+  const knownPlaceAsked = bandIsAsked && !query.band;
+  if (!query.location && (placeAsked || knownPlaceAsked)) {
     // "… de Murcia", "… from Tampa": a capitalized place after a preposition that is nothing else we know
     for (const m of question.matchAll(/\b(?:de|del|from|in|en)\s+([\p{Lu}][\p{L}'.-]+(?:\s+[\p{Lu}][\p{L}'.-]+)*)/gu)) {
       const candidate = m[1]!;
@@ -636,11 +648,13 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
       const genreWord = words(folded).some((w) => GENRE_WORDS.has(GENRE_SYNONYMS[w] ?? w));
       if (NOT_A_NAME.has(folded) || vocab.country(folded) || genreWord || !outside(candidate)) continue;
       if (countriesIn(folded, vocab).length) continue;
-      query.location = PLACES[folded] ?? candidate;
+      const known = PLACES[folded] ?? vocab.place?.(folded);
+      if (!placeAsked && !known) continue;
+      query.location = known ?? candidate;
       break;
     }
   }
-  if (!query.location && (query.intent === "bands" || query.intent === "count" || query.intent === "top")) {
+  if (!query.location && (placeAsked || knownPlaceAsked)) {
     // "bandas de motril": a lowercase place the data knows, after a preposition, that is nothing else we know
     const tokens = words(unnamed);
     search: for (let i = 1; i < tokens.length; i++) {
@@ -735,7 +749,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   // a band question that names nothing the data knows ("primer disco de zzqxwv blorp") is about that band, not every one
   const ASPECTS = new Set(["intent", "sort", "limit", "albumType", "role"]);
   if (bandIsAsked && Object.keys(query).every((key) => ASPECTS.has(key))) {
-    const trailing = trailingBand(question, vocab);
+    const trailing = trailingBand(bandText, vocab);
     if (trailing) query.band = trailing.band;
   }
   if (model.intent === "unsupported" && query.intent === "bands" && Object.keys(query).length === 1) {

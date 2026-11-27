@@ -52,7 +52,7 @@ interface Asked {
   seconds?: number;
   by?: "chrome" | "webllm" | "rules";
   badModelAnswer?: boolean;
-  /** waiting for oracle-albums.json, the first time a question needs it */
+  /** waiting for the blocks of discographies (albums/<k>.json) the question needs */
   loadingAlbums?: boolean;
   error?: string;
 }
@@ -82,7 +82,7 @@ export class OracleView {
   private examples: readonly string[] = [];
   private readonly asked: Asked[] = [];
   private loaded: { index: OracleIndex; engine: OracleEngine } | null = null;
-  private readonly loadAlbums = lazy(() => getJson<AlbumsFile>("oracle-albums.json"));
+  private readonly albumBlocks = new Map<number, Promise<AlbumsFile>>();
   private readonly load = lazy(async () => {
     const index = new OracleIndex(await getJson<OracleFile>("oracle.json"));
     return (this.loaded = { index, engine: new OracleEngine(index) });
@@ -191,11 +191,14 @@ export class OracleView {
         }
       }
       entry.query = refine(question, modelQuery, index);
-      if (needsAlbums(entry.query) && !index.hasAlbums) {
-        entry.loadingAlbums = true;
-        this.render();
-        index.setAlbums(await this.loadAlbums());
-        entry.loadingAlbums = false;
+      if (needsAlbums(entry.query)) {
+        const blocks = index.missingAlbumBlocks(engine.albumCandidates(entry.query));
+        if (blocks.length) {
+          entry.loadingAlbums = true;
+          this.render();
+          for (const file of await Promise.all(blocks.map((k) => this.albumBlockFile(k)))) index.setAlbums(file);
+          entry.loadingAlbums = false;
+        }
       }
       entry.result = engine.run(entry.query);
       entry.seconds = (performance.now() - started) / 1000;
@@ -209,6 +212,17 @@ export class OracleView {
       input.value = "";
       input.focus();
     }
+  }
+
+  /** albums/<k>.json, fetched once (again after a failure). */
+  private albumBlockFile(k: number): Promise<AlbumsFile> {
+    let file = this.albumBlocks.get(k);
+    if (!file) {
+      file = getJson<AlbumsFile>(`albums/${k}.json`);
+      file.catch(() => this.albumBlocks.delete(k));
+      this.albumBlocks.set(k, file);
+    }
+    return file;
   }
 
   private onClick(e: MouseEvent): void {

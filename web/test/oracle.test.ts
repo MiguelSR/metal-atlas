@@ -277,6 +277,11 @@ describe("refine: the question's own cues", () => {
     expect(refine("bandas de motril", { intent: "bands" }, places).location).toBe("Motril");
     // the model's place only if the question names it
     expect(refine("bandas de motril", { intent: "bands", location: "Murcia" }, places).location).toBe("Motril");
+    // album questions: "bandas de X" is where the bands are from, and only known places count
+    const albums = refine("discos de bandas de Motril", { intent: "bands" }, places);
+    expect(albums).toMatchObject({ intent: "albums", location: "Motril" });
+    expect(albums.band).toBeUndefined();
+    expect(refine("Primer disco de Zzqxwv Blorp", { intent: "bands" }, places)).toMatchObject({ band: "Zzqxwv Blorp" });
     expect(refine("bandas de culto", { intent: "bands", location: "Murcia" }, places).location).toBeUndefined();
   });
 
@@ -615,5 +620,20 @@ describe("example questions", () => {
     expect(picked).toHaveLength(3);
     expect(new Set(picked).size).toBe(3);
     expect(pickRandom(["a"], 8)).toEqual(["a"]);
+  });
+});
+
+describe("album blocks", () => {
+  it("loads only the blocks of the bands a question is about", () => {
+    const blocked = new OracleIndex({ ...oracleFile(), albumBlock: 2 });
+    const blockedEngine = new OracleEngine(blocked);
+    const rows = blockedEngine.albumCandidates({ intent: "albums", band: "Slayer", albumType: "EP" });
+    expect(rows.length).toBeLessThan(blocked.size); // only the Slayers, whatever their albums
+    expect(blocked.missingAlbumBlocks(rows)).toEqual([...new Set(rows.map((row) => Math.floor(row / 2)))]);
+    expect(blocked.missingAlbumBlocks([0, 1, 4])).toEqual([0, 2]);
+    blocked.setAlbums({ v: 1, from: 0, a: [0, [[2, "Haunting the Chapel", "EP", 1984]]] });
+    expect(blocked.missingAlbumBlocks([0, 1, 4])).toEqual([2]);
+    expect(blocked.albums(1)).toHaveLength(1);
+    expect(blocked.albums(0)).toBeUndefined();
   });
 });

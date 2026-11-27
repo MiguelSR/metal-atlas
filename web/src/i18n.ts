@@ -165,14 +165,14 @@ function english(nf: (n: number) => string) {
     oIntro: [
       "<b>It runs on your computer.</b> A small AI inside your browser turns your question into a search over the Metal Archives data. Your questions don't leave your computer.",
       "<b>It is slow at first.</b> Chrome uses its built-in AI (Gemini Nano: about 4 GB that Chrome downloads once). Other browsers with WebGPU download an open model (about 1.3 GB, kept in the cache), which then takes a minute or two to load each visit. The band data weighs about 7 MB. After that, each answer takes 1 to 10 seconds.",
-      "<b>What it knows:</b> genre, country, city, formation year, status, lyrical themes, label and reviews of every band; the current lineup and the discography of the 6,000 best known.",
+      "<b>What it knows:</b> genre, country, city, formation year, status, lyrical themes, label, reviews and discography of every band; the current lineup of the 6,000 best known.",
       "<b>What it doesn't know (yet):</b> lyrics, songs, former members, similar bands or album covers.",
       "<b>It can misread a question.</b> Each answer shows how it was understood, so you can rephrase it.",
     ],
     oIntroMobile: [
       "<b>On phones it works without AI.</b> It understands questions like the examples: genres, countries, cities, years, themes, labels, lineups and albums. On a computer with Chrome it can also use an AI.",
       "<b>It downloads about 7 MB</b> of band data when you open it (mind your data plan); after that, answers are instant.",
-      "<b>What it knows:</b> genre, country, city, formation year, status, lyrical themes, label and reviews of every band; the current lineup and the discography of the 6,000 best known.",
+      "<b>What it knows:</b> genre, country, city, formation year, status, lyrical themes, label, reviews and discography of every band; the current lineup of the 6,000 best known.",
       "<b>What it doesn't know (yet):</b> lyrics, songs, former members, similar bands or album covers.",
       "<b>It can misread a question.</b> Each answer shows how it was understood, so you can rephrase it.",
     ],
@@ -200,7 +200,7 @@ function english(nf: (n: number) => string) {
     oLoadingModel: (p: number) => `Loading the AI… ${p}%`,
     oModelError: (e: string) => `Couldn't load the AI (${e}). Plain questions still work without it.`,
     oThinking: "Thinking…",
-    oLoadingAlbums: "Loading the discographies (first time only)…",
+    oLoadingAlbums: "Loading the discographies…",
     oChecking: "Checking which AI this browser can use…",
     oBy: { chrome: "Gemini Nano", webllm: "Qwen", rules: "no AI" },
     oTook: (s: string, by: string) => `${s} s · ${by}`,
@@ -283,7 +283,7 @@ function english(nf: (n: number) => string) {
     oNoLineupData: (n: number) =>
       `Lineups are only known for the 6,000 best known bands; ${nf(n)} ${plural(n, "band", "bands")} found ${plural(n, "has", "have")} none.`,
     oNoAlbumData: (n: number) =>
-      `Discographies are only known for the 6,000 best known bands; ${nf(n)} ${plural(n, "band", "bands")} found ${plural(n, "has", "have")} none.`,
+      `${nf(n)} ${plural(n, "band", "bands")} found ${plural(n, "has", "have")} no discography downloaded yet (new bands get theirs within a day).`,
     oUnsupported: {
       lyrics: "The Oracle doesn't have the lyrics (yet), only each band's lyrical themes.",
       similar: "The Oracle doesn't know which bands are similar or what fans listen to (yet).",
@@ -468,14 +468,14 @@ function spanish(nf: (n: number) => string): Messages {
     oIntro: [
       "<b>Funciona en tu ordenador.</b> Una IA pequeña dentro del navegador convierte tu pregunta en una búsqueda sobre los datos de Metal Archives. Tus preguntas no salen de tu ordenador.",
       "<b>Al principio va lenta.</b> Chrome usa su IA integrada (Gemini Nano: unos 4 GB que Chrome descarga una sola vez). Otros navegadores con WebGPU descargan un modelo abierto (unos 1,3 GB, que se quedan en caché) y tardan un minuto o dos en cargarlo cada visita. Los datos de las bandas pesan unos 7 MB. Después, cada respuesta tarda entre 1 y 10 segundos.",
-      "<b>Qué sabe:</b> género, país, ciudad, año de formación, estado, temática de las letras, sello y reseñas de todas las bandas; la formación actual y la discografía de las 6.000 más conocidas.",
+      "<b>Qué sabe:</b> género, país, ciudad, año de formación, estado, temática de las letras, sello, reseñas y discografía de todas las bandas; la formación actual de las 6.000 más conocidas.",
       "<b>Qué no sabe (todavía):</b> letras, canciones, antiguos miembros, bandas parecidas ni portadas.",
       "<b>Puede entender mal la pregunta.</b> Cada respuesta muestra cómo la ha entendido, para que puedas reformularla.",
     ],
     oIntroMobile: [
       "<b>En el móvil funciona sin IA.</b> Entiende preguntas como las de los ejemplos: géneros, países, ciudades, años, temáticas, sellos, formaciones y discos. En un ordenador con Chrome puede usar además una IA.",
       "<b>Descarga unos 7 MB</b> de datos de las bandas al abrirlo (ojo si vas con datos móviles); después, las respuestas son instantáneas.",
-      "<b>Qué sabe:</b> género, país, ciudad, año de formación, estado, temática de las letras, sello y reseñas de todas las bandas; la formación actual y la discografía de las 6.000 más conocidas.",
+      "<b>Qué sabe:</b> género, país, ciudad, año de formación, estado, temática de las letras, sello, reseñas y discografía de todas las bandas; la formación actual de las 6.000 más conocidas.",
       "<b>Qué no sabe (todavía):</b> letras, canciones, antiguos miembros, bandas parecidas ni portadas.",
       "<b>Puede entender mal la pregunta.</b> Cada respuesta muestra cómo la ha entendido, para que puedas reformularla.",
     ],
@@ -503,7 +503,7 @@ function spanish(nf: (n: number) => string): Messages {
     oLoadingModel: (p) => `Cargando la IA… ${p}%`,
     oModelError: (e) => `No se ha podido cargar la IA (${e}). Las preguntas sencillas siguen funcionando sin ella.`,
     oThinking: "Pensando…",
-    oLoadingAlbums: "Cargando las discografías (solo la primera vez)…",
+    oLoadingAlbums: "Cargando las discografías…",
     oChecking: "Comprobando qué IA puede usar este navegador…",
     oBy: { chrome: "Gemini Nano", webllm: "Qwen", rules: "sin IA" },
     oTook: (s, by) => `${s} s · ${by}`,
@@ -590,7 +590,7 @@ function spanish(nf: (n: number) => string): Messages {
     oNoLineupData: (n) =>
       `Solo se conoce la formación de las 6.000 bandas más conocidas; ${nf(n)} de las encontradas no la ${plural(n, "tiene", "tienen")}.`,
     oNoAlbumData: (n) =>
-      `Solo se conoce la discografía de las 6.000 bandas más conocidas; ${nf(n)} de las encontradas no la ${plural(n, "tiene", "tienen")}.`,
+      `${nf(n)} de las bandas encontradas no ${plural(n, "tiene", "tienen")} aún la discografía descargada (las nuevas la reciben en un día).`,
     oUnsupported: {
       lyrics: "El Oráculo no tiene las letras (todavía), solo la temática de cada banda.",
       similar: "El Oráculo no sabe qué bandas se parecen ni qué escuchan sus fans (todavía).",

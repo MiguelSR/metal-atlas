@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Regenerates the Oracle's example questions (src/oracle/examples.ts) from map/site/oracle.json:
+ * Regenerates the Oracle's example questions (src/oracle/examples.ts) from map/site/oracle.json and albums/:
  *
  *   npm run examples          (DEBUG=1 npm run examples: also list the rejected questions)
  *
  * Each question is checked: the rules alone must read it as intended and the answer must be satisfying.
  */
 
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -24,7 +24,10 @@ await build({
 });
 const { makeExamples } = await import(pathToFileURL(out).href);
 const file = JSON.parse(await readFile(join(WEB, "..", "map", "site", "oracle.json"), "utf8"));
-const albums = JSON.parse(await readFile(join(WEB, "..", "map", "site", "oracle-albums.json"), "utf8"));
+const blocksDir = join(WEB, "..", "map", "site", "albums");
+const albums = await Promise.all(
+  (await readdir(blocksDir)).map(async (name) => JSON.parse(await readFile(join(blocksDir, name), "utf8"))),
+);
 const { es, en, report } = makeExamples(file, albums, Boolean(process.env.DEBUG));
 for (const line of report) console.log(line);
 const list = (items) => items.map((q) => `    ${JSON.stringify(q)},`).join("\n");

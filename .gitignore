@@ -14,6 +14,7 @@ map/site/*.json
 !map/site/countries-50m.json
 map/site/c/
 map/site/r/
+map/site/albums/
 dist/
 
 # raw downloads and intermediate data (hundreds of MB, thousands of files)

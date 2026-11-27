@@ -6,7 +6,9 @@
   2. One request per new or changed band: its band page. New bands also get an exact-name search (the only place
      with their a.k.a.); game bands also refresh their lineup, photo, logo and discography. Bands whose page is gone
      (deleted) are removed.
-  3. Rebuild: regions -> build -> members + verify (bands new to the game) -> game -> oracle (the publish workflow
+  3. Discographies, for the Oracle: the changed bands, those with upcoming releases, and the 1,000 least recently
+     checked, within two hours (see discographies.py).
+  4. Rebuild: regions -> build -> members + verify (bands new to the game) -> game -> oracle (the publish workflow
      then builds the front end and bundles the site).
 
 State: map/update_state.json = {"since": "YYYY-MM-DD HH:MM"} (Metal Archives server time).
@@ -21,7 +23,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
-from . import build, game, members, oracle, regions, verify
+from . import build, discographies, game, members, oracle, regions, verify
 from . import metal_archives as ma
 from . import paths
 from .jsonio import read_cached, read_json, write_cached, write_json
@@ -221,6 +223,9 @@ def main(argv: list[str] | None = None) -> None:
         f"(previous copy: {backup})",
         flush=True,
     )
+    print("-> discographies", flush=True)
+    done = discographies.refresh(todo, set(updater.by_id))
+    print(f"discographies: {done} downloaded", flush=True)
 
     rebuild()
     if new or modified:

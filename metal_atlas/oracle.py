@@ -1,6 +1,6 @@
 """Builds the Oracle's data: site/oracle.json (every band with the fields the Oracle can ask about, plus the lineups
-scraped for the game bands) and site/oracle-albums.json (discographies, loaded by the page only when a question needs
-them: `discographies` downloads them for every band; until then, the game bands' from `verify`).
+scraped for the game bands) and site/albums/<k>.json (every band's discography, from `discographies`, in blocks of rows:
+the page loads only the blocks of the bands a question is about, when it needs albums).
 
 The Oracle (web/src/oracle) asks an in-browser language model to turn a question into a structured query, and runs
 that query on this file. Rows are sorted by relevance, like bands.json, so "the most relevant" is row order.
@@ -13,13 +13,16 @@ that query on this file. Rows are sorted by relevance, like bands.json, so "the 
      "genre": [dict index], "g": [[normalized genre index], …], "country": [[country index], …],
      "location": [dict index], "themes": [dict index], "label": [dict index | -1],
      "reviews": […], "rating": […] (average %, 0 = no reviews),
-     "lineups": {row: [header, [[name, role], …]]}}         current (or last known) lineup, game bands only
+     "lineups": {row: [header, [[name, role], …]]},         current (or last known) lineup, game bands only
+     "albumBlock": rows per albums/<k>.json}
 
-    oracle-albums.json: {"v": 1, "a": [albums | 0, …]}, one item per row of oracle.json (same order):
-    [[album id, title, type, year], …], or 0 when the discography isn't known
+    albums/<k>.json: {"v": 1, "from": k * albumBlock, "a": [albums | 0, …]}, one item per row of oracle.json from
+    row `from` on: [[album id, title, type, year], …], or 0 when the discography isn't known
 
 Usage: python3 -m metal_atlas oracle
 """
+
+import shutil
 
 from . import discographies, paths
 from .build import STATUS_CODE, Band, load_bands
@@ -27,6 +30,7 @@ from .jsonio import read_cached, write_json
 from .metal_archives import NO_LABEL
 
 VERSION = 1
+ALBUM_BLOCK = 1000  # rows per albums/<k>.json: a question about one band loads one block (~50–300 KB compressed)
 
 
 class Dictionary:
@@ -92,11 +96,25 @@ def oracle_data(bands: list[Band], reviews: dict[int, list[int]], members_dir=No
     return data
 
 
+def write_album_blocks(albums: list, folder, block: int = ALBUM_BLOCK) -> int:
+    """Writes albums/<k>.json, ``block`` rows each, replacing the folder. Returns the number of blocks."""
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir(parents=True)
+    starts = range(0, len(albums), block)
+    for k, start in enumerate(starts):
+        write_json(
+            folder / f"{k}.json", {"v": VERSION, "from": start, "a": albums[start : start + block]}, compact=True
+        )
+    return len(starts)
+
+
 def main(argv: list[str] | None = None) -> None:
     bands, reviews = load_bands()
     data = oracle_data(bands, reviews)
     albums = data.pop("albums")
+    data["albumBlock"] = ALBUM_BLOCK
     write_json(paths.SITE_DIR / "oracle.json", data, compact=True)
-    write_json(paths.SITE_DIR / "oracle-albums.json", {"v": VERSION, "a": albums}, compact=True)
+    write_album_blocks(albums, paths.SITE_DIR / "albums")
+    (paths.SITE_DIR / "oracle-albums.json").unlink(missing_ok=True)  # the single file used before the blocks
     known = sum(1 for a in albums if a != 0)
     print(f"oracle: {len(data['id'])} bands, {len(data['lineups'])} lineups, {known} discographies")

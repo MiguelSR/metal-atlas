@@ -240,4 +240,10 @@ export const QUESTIONS: [question: string, expected: Partial<Query>][] = [
   ["Bandas que tengan la palabra witch en el nombre", { intent: "bands", name: "witch", nameMatch: "contains" }],
   ["Bandas que hablen de cine negro", { intent: "bands", themes: ["film noir"] }],
   ["bandas de motril", { intent: "bands", location: "Motril" }],
+  ["Discos de bandas de Motril", { intent: "albums", location: "Motril" }],
+  [
+    "Discos de 1990 de bandas de Granada",
+    { intent: "albums", location: "Granada", releasedFrom: 1990, releasedTo: 1990 },
+  ],
+  ["Albums by bands from Texas", { intent: "albums", location: "Texas" }],
 ];

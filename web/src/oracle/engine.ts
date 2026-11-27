@@ -90,7 +90,7 @@ const GENRE_FAMILIES = new Set(
 
 const decade = (year: number): string => `${Math.floor(year / 10) * 10}s`;
 
-/** Whether answering a query needs the discographies (oracle-albums.json). */
+/** Whether answering a query needs the discographies (albums/<k>.json). */
 export function needsAlbums(query: Query): boolean {
   return query.intent === "albums" || !!(query.album ?? query.albumType ?? query.releasedFrom ?? query.releasedTo);
 }
@@ -124,6 +124,16 @@ export class OracleEngine {
         return { kind: "bands", total: sorted.length, rows: sorted.slice(0, limit) };
       }
     }
+  }
+
+  /** The rows whose discographies a query needs: those passing its other filters. */
+  albumCandidates(query: Query): number[] {
+    const others = { ...query };
+    delete others.album;
+    delete others.albumType;
+    delete others.releasedFrom;
+    delete others.releasedTo;
+    return this.matchingRows(others);
   }
 
   // ---------- filtering ----------

@@ -26,11 +26,15 @@ export interface OracleFile {
   reviews: number[];
   rating: number[];
   lineups: Record<string, Lineup>;
+  /** rows per albums/<k>.json */
+  albumBlock?: number;
 }
 
-/** oracle-albums.json: one item per row of oracle.json, its albums or 0 when the discography isn't known. */
+/** albums/<k>.json: one item per row of oracle.json from row `from` on, its albums or 0 when the discography isn't
+ * known. */
 export interface AlbumsFile {
   v: number;
+  from?: number;
   a: (Album[] | 0)[];
 }
 
@@ -227,20 +231,34 @@ export class OracleIndex implements Vocabulary {
     return this.data.lineups[row];
   }
 
-  private albumRows: (Album[] | 0)[] | null = null;
+  private readonly albumRows: (Album[] | 0 | undefined)[] = [];
+  private readonly albumBlocks = new Set<number>();
 
-  /** Adds the discographies (oracle-albums.json, loaded only when a question needs them). */
-  setAlbums(file: AlbumsFile): void {
-    this.albumRows = file.a;
+  /** Rows per albums/<k>.json. */
+  get albumBlock(): number {
+    return this.data.albumBlock ?? Math.max(1, this.size);
   }
 
-  get hasAlbums(): boolean {
-    return this.albumRows !== null;
+  /** Adds a block of discographies (albums/<k>.json, loaded only when a question needs them). */
+  setAlbums(file: AlbumsFile): void {
+    const from = file.from ?? 0;
+    file.a.forEach((albums, i) => (this.albumRows[from + i] = albums));
+    this.albumBlocks.add(Math.floor(from / this.albumBlock));
+  }
+
+  /** The blocks holding these rows' discographies that aren't loaded yet. */
+  missingAlbumBlocks(rows: Iterable<number>): number[] {
+    const missing = new Set<number>();
+    for (const row of rows) {
+      const block = Math.floor(row / this.albumBlock);
+      if (!this.albumBlocks.has(block)) missing.add(block);
+    }
+    return [...missing];
   }
 
   /** A row's albums, or undefined when its discography isn't known (or not loaded). */
   albums(row: number): Album[] | undefined {
-    const albums = this.albumRows?.[row];
+    const albums = this.albumRows[row];
     return albums === 0 ? undefined : albums;
   }
 

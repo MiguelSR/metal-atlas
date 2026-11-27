@@ -74,7 +74,7 @@ Ask about the bands in English or Spanish: *"Which country has the most black me
 - **The model only translates, and the question has the last word.** Small models invent filters nobody asked for (a country, a genre, a sort) and miss plain cues, so `refine` (web/src/oracle/refine.ts) reads the explicit cues with rules (years and decades, status, "how many", "which country… most", lineups, albums, the oldest/best rated…) and keeps what the model adds only when the question backs it. Words are matched to the data through a vocabulary (`web/src/oracle/vocab.ts`): ~300 lyrical theme concepts (Spanish and English words -> the English stems Metal Archives uses, e.g. "cristianismo", "Christianity" -> christian, christ, church, god…) and Spanish place names ("Gotemburgo" -> Gothenburg).
 - **An intro panel** explains this the first time (slow at first, what it knows and what it doesn't); "How does it work?" shows it again. **Eight example questions** are one click away, picked at random when the Oracle first opens (🎲 for others; they stay put otherwise) from 1,044 per language generated from the data by `npm run examples` (`web/eval/make-examples.ts`): templates filled with real genres, countries, cities, themes, bands and labels, each kept only if the rules alone read it as intended and the answer is satisfying (at least 3 bands, a lineup with that member, albums…).
 - **Every answer shows how the question was understood** (chips) and how long it took, with which model.
-- **What it can answer:** lists of bands (by genre words — optionally **pure**: "pure doom", "doom sin mezclar", "only thrash" keep bands whose every genre is that one, so "Doom/Grindcore" or "Blackened Doom" are left out, while heavy and rock count as part of doom ("Heavy/Doom", "Doom Rock") —, country, place, formation years, status — including "changed name" —, lyrical themes, label or **unsigned**, member, **band name** (named exactly, starting with, containing or ending with a word), **number of reviews** ("between 5 and 10", "more than 20", "no reviews") and **average rating** ("above 90%")), counts, rankings (by country, genre, label, place, year, decade, status, or **lyrical theme**: "the most common theme among 80s doom bands"), sorted by relevance, reviews, rating or age, from either end ("lowest rated", "fewest reviews" among bands that have some); the current lineup and the discography of the ~6,000 game bands. **What it can't (yet):** lyrics, songs, former members, similar bands, covers: it says so instead of guessing.
+- **What it can answer:** lists of bands (by genre words — optionally **pure**: "pure doom", "doom sin mezclar", "only thrash" keep bands whose every genre is that one, so "Doom/Grindcore" or "Blackened Doom" are left out, while heavy and rock count as part of doom ("Heavy/Doom", "Doom Rock") —, country, place, formation years, status — including "changed name" —, lyrical themes, label or **unsigned**, member, **band name** (named exactly, starting with, containing or ending with a word), **number of reviews** ("between 5 and 10", "more than 20", "no reviews") and **average rating** ("above 90%")), counts, rankings (by country, genre, label, place, year, decade, status, or **lyrical theme**: "the most common theme among 80s doom bands"), sorted by relevance, reviews, rating or age, from either end ("lowest rated", "fewest reviews" among bands that have some); the discography of every band and the current lineup of the ~6,000 game bands. **What it can't (yet):** lyrics, songs, former members, similar bands, covers: it says so instead of guessing.
 - **Quality**, measured with `npm run eval --prefix web` (headless Chrome, 72 questions in `web/eval/`): on questions written after the rules (an honest test), Gemini Nano + rules got 17/20 right; Gemini Nano alone 9/20; the rules alone 17/20. After the theme vocabulary: 94/94 on all evaluation questions and 22/22 on a fresh set of theme questions, the same with or without the model. Gemini Nano takes ~1.4 s per question, Qwen3.5-2B ~6 s.
 
 ### Language
@@ -191,7 +191,7 @@ iTunes ─────────verify───► scraper/itunes/, disco/ ─
 | 7 | `verify` | Looks up each game band on iTunes and confirms which artist is the right one by comparing albums (see [iTunes verification](#itunes-verification)). | ~20 h the first time (one call every 6 s) |
 | 8 | `game` | Puts everything together in `game.json` and `previews.json`. | seconds |
 | – | `discographies backfill` | Downloads the discography of every band (one page per band, ~5–6 days, resumable) into `scraper/discographies.jsonl`. | days (once) |
-| 9 | `oracle` | Writes `oracle.json`: every band in columns (dictionary-encoded texts) plus the lineups and discographies of the game bands. | ~10 s |
+| 9 | `oracle` | Writes `oracle.json`: every band in columns (dictionary-encoded texts) plus the lineups of the game bands; and `albums/<k>.json`, every band's discography. | ~10 s |
 | 10 | `bundle` | Builds `map/public`. | seconds |
 
 Steps 1–3, 6 and 7 are only needed once. After that, `update` keeps the data current incrementally, every day on GitHub.
@@ -266,7 +266,7 @@ The data is attached to the release tagged [`data`](https://github.com/MiguelSR/
 
 | File | Contents | Size |
 |---|---|---|
-| `state.tar.gz` | what the steps need to update: the master dataset (unpacked to `~/metal_archives_bands.json`), review lists and counts, geography downloads, and the scraper caches (lineups, discographies, iTunes verification) | ~53 MB |
+| `state.tar.gz` | what the steps need to update: the master dataset (unpacked to `~/metal_archives_bands.json`), review lists and counts, geography downloads, the scraper caches (lineups, discographies, iTunes verification) and every band's discography (`scraper/discographies.jsonl`) | ~68 MB |
 | `site-data.tar.gz` | the site's generated JSON (`map/site/*.json`, `c/`, `r/`), which `pages.yml` deploys | ~17 MB |
 
 ```bash
@@ -314,9 +314,10 @@ What `update` does:
    - **new bands:** an exact-name search, the only place that lists their aliases (a.k.a.);
    - **game bands:** lineup, photo and logo (from the same page) and their discography.
    - Bands that return 404 (deleted from Metal Archives) are removed.
-4. **Saves** the master dataset (keeping the previous one as `~/metal_archives_bands.json.bak`) and `reviews_by_band.json`.
-5. **Rebuilds:** `regions` → `build` → `members` and `verify` (only for bands new to the top 6,000) → `game` → `bundle`.
-6. **Records** the date of the newest change in `update_state.json`.
+4. **Refreshes discographies** (`discographies.refresh`, at most 2 hours): the changed bands, the bands with upcoming releases, and the 1,000 least recently checked (bands never downloaded first), so every discography is re-read about every 200 days.
+5. **Saves** the master dataset (keeping the previous one as `~/metal_archives_bands.json.bak`) and `reviews_by_band.json`.
+6. **Rebuilds:** `regions` → `build` → `members` and `verify` (only for bands new to the top 6,000) → `game` → `bundle`.
+7. **Records** the date of the newest change in `update_state.json`.
 
 **How it knows where to start:** `map/update_state.json` (`{"since": "YYYY-MM-DD HH:MM"}`, in Metal Archives server time, about 6 h behind Central European time).
 - It **always** starts one day earlier, to be safe: going over a band twice does no harm.
@@ -440,7 +441,7 @@ Compact (arrays instead of objects) to keep them small.
 | `r/<n>.json` | Regions of one country: names, geometry (fills and borders) and the same genre × year summary per region. |
 | `bands.json` | Global index for the band search and the game: parallel columns `n` (names), `y` (years), `a` (active), `g` (genres), `l` (country + regions), `id`, `s` (non-standard slugs). Sorted by relevance. |
 | `oracle.json` | Parallel columns over every band, by relevance: `id`, `name`, `year`, `status`, `genre` / `location` / `themes` / `label` (indices into `dicts`), `g` (normalized genres), `country`, `reviews`, `rating`; `lineups` and `albums` keyed by row for the game bands. ~22 MB (~7 MB compressed), loaded only when the Oracle opens. See `metal_atlas/oracle.py`. |
-| `oracle-albums.json` | `a`: one item per row of `oracle.json`: `[[album id, title, type, year], …]`, or 0 when the discography isn't known. Loaded by the page only when a question needs albums. |
+| `albums/<k>.json` | Discographies in blocks of `albumBlock` (1,000) rows of `oracle.json`: `from` (first row) and `a`, one item per row: `[[album id, title, type, year], …]`, or 0 when the discography isn't known. ~32 MB in all (~12 MB compressed), so the page loads only the blocks of the bands a question is about (one band: one block, 35–520 KB compressed); a question over every band ("albums from 1990") loads them all. |
 | `game.json` | `levels`: 5 lists of indices. `b`: rows `[id, name, slug, year, countries, members, lineup header, photo, review, review %, logo, iTunes artist id, [albums], [[preview url, song, album, cover], …], location]`. Up to 5 songs per band, from different albums, with shortened URLs (`game` strips the common prefix, `index.html` puts it back). |
 
 ### Scraper caches

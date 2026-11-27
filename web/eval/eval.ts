@@ -32,7 +32,8 @@ async function run(): Promise<void> {
       : await chromeTranslator(progress);
   log(`model ready (${backend}) in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   const index = new OracleIndex((await (await fetch("oracle.json")).json()) as OracleFile);
-  index.setAlbums((await (await fetch("oracle-albums.json")).json()) as AlbumsFile);
+  const blocks = Math.ceil(index.size / index.albumBlock);
+  for (let k = 0; k < blocks; k++) index.setAlbums((await (await fetch(`albums/${k}.json`)).json()) as AlbumsFile);
   const engine = new OracleEngine(index);
   // "examples": a random sample of the generated examples, expected to read as they do without a model
   const questions: [string, Partial<Query>][] =

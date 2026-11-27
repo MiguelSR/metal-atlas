@@ -22,6 +22,7 @@ from .jsonio import read_cached, read_json
 from .net import FetchError, fetch, fetch_json
 
 ROTATION = 1000  # bands re-checked per daily update, least recently checked first (the whole set every ~200 days)
+REFRESH_HOURS = 2.0  # time limit of the daily refresh (~2 s per band): the job has 5 hours in all
 
 
 def load() -> dict[int, tuple[float, list]]:
@@ -95,8 +96,10 @@ def upcoming_band_ids() -> set[int]:
             return ids
 
 
-def refresh(changed: Iterable[int], known: set[int], rotation: int = ROTATION) -> int:
-    """`update`'s step: changed bands, bands with upcoming releases, then the least recently checked ones."""
+def refresh(changed: Iterable[int], known: set[int], rotation: int = ROTATION, hours: float = REFRESH_HOURS) -> int:
+    """`update`'s step: changed bands, bands with upcoming releases, then the least recently checked ones (never
+    downloaded first), within ``hours``; whatever is cut comes first next time, as the least recently checked."""
+    deadline = time.time() + hours * 3600
     store = load()
     todo = [b for b in changed if b in known]
     try:
@@ -106,7 +109,7 @@ def refresh(changed: Iterable[int], known: set[int], rotation: int = ROTATION) -
     queued = set(todo)
     oldest = sorted((t for t in ((store.get(b, (0, None))[0], b) for b in known if b not in queued)))
     todo += [b for _, b in oldest[:rotation]]
-    done = download(dict.fromkeys(todo))
+    done = download(dict.fromkeys(todo), deadline=deadline)
     compact(load(), known)
     return done
 
