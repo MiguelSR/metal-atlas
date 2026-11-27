@@ -60,6 +60,9 @@ export interface Query {
   groupBy?: Group;
   sort?: Sort;
   limit?: number;
+  /** results skipped after sorting: "el segundo disco" = oldest, offset 1, limit 1 (read by the rules only, not
+   * in the model's schema) */
+  offset?: number;
   /** for "unsupported": the data that would be needed */
   missing?: Missing;
 }

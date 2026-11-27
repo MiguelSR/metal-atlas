@@ -265,6 +265,7 @@ function english(nf: (n: number) => string) {
           ? `released ${a} or later`
           : `released ${b} or earlier`,
     oLimit: (n: number) => `top ${n}`,
+    oNth: (n: number) => `no. ${n}`,
     oPure: "that genre only, unmixed",
     oUnsigned: "unsigned",
     oName: {
@@ -572,6 +573,7 @@ function spanish(nf: (n: number) => string): Messages {
           ? `publicado en ${a} o después`
           : `publicado en ${b} o antes`,
     oLimit: (n) => `top ${n}`,
+    oNth: (n) => `n.º ${n}`,
     oPure: "solo ese género, sin mezclas",
     oUnsigned: "sin sello",
     oName: {

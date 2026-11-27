@@ -36,6 +36,7 @@ export function describeQuery(query: Query, t: Translate, countryName: (country:
     chips.push(t("oRatingRange", query.ratingMin ?? null, query.ratingMax ?? null));
   }
   if (query.sort && query.sort !== "relevance") chips.push(t("oSorts")[query.sort]);
-  if (query.limit) chips.push(t("oLimit", query.limit));
+  if (query.offset) chips.push(t("oNth", query.offset + 1));
+  else if (query.limit) chips.push(t("oLimit", query.limit));
   return chips;
 }

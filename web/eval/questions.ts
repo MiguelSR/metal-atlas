@@ -246,4 +246,17 @@ export const QUESTIONS: [question: string, expected: Partial<Query>][] = [
     { intent: "albums", location: "Granada", releasedFrom: 1990, releasedTo: 1990 },
   ],
   ["Albums by bands from Texas", { intent: "albums", location: "Texas" }],
+  ["¿Quién toca la batería en Nasty Savage?", { intent: "lineup", band: "Nasty Savage", role: "drums" }],
+  [
+    "¿Cuál es el segundo disco de Iron Maiden?",
+    { intent: "albums", band: "Iron Maiden", sort: "oldest", limit: 1, offset: 1, albumType: "Full-length" },
+  ],
+  [
+    "Metallica's third album",
+    { intent: "albums", band: "Metallica", sort: "oldest", limit: 1, offset: 2, albumType: "Full-length" },
+  ],
+  [
+    "penúltimo disco de Slayer",
+    { intent: "albums", band: "Slayer", sort: "newest", limit: 1, offset: 1, albumType: "Full-length" },
+  ],
 ];

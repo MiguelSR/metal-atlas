@@ -366,7 +366,8 @@ export class OracleEngine {
     if (query.sort === "newest") hits.sort((a, b) => yearOf(b) - yearOf(a) || a.row - b.row);
     else if (query.sort !== "relevance") hits.sort((a, b) => yearOf(a) - yearOf(b) || a.row - b.row);
     const limit = query.limit ?? (query.band ? 40 : DEFAULT_LIMIT);
-    return { kind: "albums", total: hits.length, albums: hits.slice(0, limit), bandsWithoutData };
+    const offset = query.offset ?? 0;
+    return { kind: "albums", total: hits.length, albums: hits.slice(offset, offset + limit), bandsWithoutData };
   }
 
   private lineups(query: Query, rows: number[]): Answer {

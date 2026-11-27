@@ -167,6 +167,22 @@ describe("engine", () => {
       },
     );
     expect(run({ intent: "albums", album: "reign in blood" })).toMatchObject({ total: 1, bandsWithoutData: 4 });
+    // "the second album": oldest first, skipping one
+    expect(run({ intent: "albums", band: "Slayer", sort: "oldest", limit: 1, offset: 1 })).toMatchObject({
+      total: 3,
+      albums: [{ album: [2, "Haunting the Chapel", "EP", 1984] }],
+    });
+  });
+
+  it("reads which album of a band is asked for", () => {
+    const read = (q: string) => refine(q, { intent: "bands" }, vocab);
+    expect(read("¿Cuál es el segundo disco de Slayer?")).toMatchObject({ sort: "oldest", limit: 1, offset: 1 });
+    expect(read("Slayer's third album")).toMatchObject({ sort: "oldest", offset: 2 });
+    expect(read("4º disco de Slayer")).toMatchObject({ offset: 3 });
+    expect(read("disco número 2 de Slayer")).toMatchObject({ offset: 1 });
+    expect(read("penúltimo disco de Slayer")).toMatchObject({ sort: "newest", limit: 1, offset: 1 });
+    expect(read("primer disco de Slayer").offset).toBeUndefined();
+    expect(read("último disco de Slayer")).toMatchObject({ sort: "newest", limit: 1 });
   });
 
   it("counts heavy and rock as kindred to doom", () => {

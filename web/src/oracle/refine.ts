@@ -391,6 +391,34 @@ function trailingBand(question: string, vocab: Vocabulary): { band: string; writ
   return { band: vocab.closestBand?.(folded) ?? written, written };
 }
 
+const ORDINALS: [RegExp, number][] = [
+  [/^(?:segund[oa]|second|2nd|2o|2a)$/, 2],
+  [/^(?:tercer[oa]?|third|3rd|3o|3a)$/, 3],
+  [/^(?:cuart[oa]|fourth|4th|4o|4a)$/, 4],
+  [/^(?:quint[oa]|fifth|5th|5o|5a)$/, 5],
+  [/^(?:sext[oa]|sixth|6th|6o|6a)$/, 6],
+  [/^(?:septim[oa]|seventh|7th|7o|7a)$/, 7],
+  [/^(?:octav[oa]|eighth|8th|8o|8a)$/, 8],
+  [/^(?:noven[oa]|ninth|9th|9o|9a)$/, 9],
+  [/^(?:decim[oa]|tenth|10th|10o|10a)$/, 10],
+];
+const RELEASE_WORD = /^(?:disco|discos|album|albums|lp|trabajo|full|full-length|ep|demo|single|release|record)$/;
+
+/** "el segundo disco", "Iron Maiden's third album", "disco número 4": which album (1-based), or 0. */
+function albumOrdinal(q: string): number {
+  const tokens = words(q.replace(/(\d+)\s*[ºª°]/g, "$1o"));
+  for (let i = 0; i < tokens.length; i++) {
+    const ordinal = ORDINALS.find(([pattern]) => pattern.test(tokens[i]!));
+    // the ordinal next to a release word, maybe with one word between ("segundo gran disco", "second studio album")
+    if (ordinal && tokens.slice(i + 1, i + 3).some((w) => RELEASE_WORD.test(w))) return ordinal[1];
+    if (RELEASE_WORD.test(tokens[i]!) && /^(?:numero|number|no)$/.test(tokens[i + 1] ?? "")) {
+      const n = Number(tokens[i + 2]);
+      if (n >= 1 && n <= 50) return n;
+    }
+  }
+  return 0;
+}
+
 /** Text the question backs: it contains the value, or a word sharing its first `prefix` letters. */
 function backed(q: string, value: string, prefix = 4): boolean {
   const v = fold(value);
@@ -733,7 +761,11 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   if (query.intent === "albums") {
     const type = ALBUM_TYPES.find(([pattern]) => pattern.test(q));
     if (type) query.albumType = type[1];
-    if (/\bprimer|\bfirst\b|debut/.test(q)) Object.assign(query, { sort: "oldest", limit: 1 });
+    const nth = albumOrdinal(q);
+    if (/\bpenultim|second to last|second-to-last|next to last|penultimate/.test(q)) {
+      Object.assign(query, { sort: "newest", limit: 1, offset: 1 });
+    } else if (nth > 1) Object.assign(query, { sort: "oldest", limit: 1, offset: nth - 1 });
+    else if (/\bprimer|\bfirst\b|debut/.test(q)) Object.assign(query, { sort: "oldest", limit: 1 });
     else if (/\bultim|\blatest\b|\blast\b|mas reciente|most recent|newest/.test(q)) {
       Object.assign(query, { sort: "newest", limit: 1 });
     }

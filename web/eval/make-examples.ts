@@ -460,6 +460,14 @@ export function makeExamples(
       limit: 1,
       albumType: "Full-length",
     });
+    add("second", `¿Cuál es el segundo disco de ${band}?`, `What is ${band}'s second album?`, {
+      intent: "albums",
+      band,
+      sort: "oldest",
+      limit: 1,
+      offset: 1,
+      albumType: "Full-length",
+    });
     add("discography", `Discografía de ${band}`, `${band} discography`, { intent: "albums", band });
     add("label", `Bandas del sello ${label}`, `Bands on the label ${label}`, { intent: "bands", label });
   }

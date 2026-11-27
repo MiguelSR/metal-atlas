@@ -10,7 +10,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -45,8 +45,11 @@ const files = {
   "/": ["text/html", PAGE],
   "/eval.js": ["text/javascript", bundle.outputFiles[0].text],
   "/oracle.json": ["application/json", await readFile(join(WEB, "..", "map", "site", "oracle.json"))],
-  "/oracle-albums.json": ["application/json", await readFile(join(WEB, "..", "map", "site", "oracle-albums.json"))],
 };
+const ALBUMS = join(WEB, "..", "map", "site", "albums");
+for (const name of await readdir(ALBUMS)) {
+  files[`/albums/${name}`] = ["application/json", await readFile(join(ALBUMS, name))];
+}
 const server = createServer((req, res) => {
   const file = files[new URL(req.url, "http://x").pathname];
   if (!file) return res.writeHead(404).end();
