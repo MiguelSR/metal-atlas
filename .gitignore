@@ -24,8 +24,7 @@ scraper/itunes/
 scraper/disco/
 scraper/discographies.jsonl
 scraper/discographies.log
-map/reviews_pages/
-map/reviews_new/
+map/review_keys.json
 map/geo_dl/
 map/regions_out/
 map/reviews_by_band.json

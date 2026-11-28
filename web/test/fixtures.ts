@@ -14,8 +14,6 @@ export function gameBand(overrides: Partial<Record<number, unknown>> = {}): Game
     ],
     "Last known",
     "https://img/photo.jpg",
-    "Nevermore at their best: Nevermore riffs everywhere.",
-    90,
     "https://img/logo.png",
     123,
     ["Dreaming Neon Black", "Dead Heart in a Dead World"],

@@ -1,87 +1,50 @@
 /**
- * Runs the evaluation questions through a model in the browser and scores the queries (see scripts/eval-oracle.mjs).
- * The page has a "start" button (creating a Chrome session can need a click) and writes its log into #__out.
+ * Scores how the rules read the evaluation questions (see scripts/eval-oracle.mjs): each question's query against
+ * the expected one, and each answer's size.
  */
 
-import { type AlbumsFile, type OracleFile, OracleIndex } from "../src/oracle/data";
+import type { AlbumsFile, OracleFile } from "../src/oracle/data";
+import { OracleIndex } from "../src/oracle/data";
 import { OracleEngine } from "../src/oracle/engine";
-import { type Translator, chromeTranslator, webLlmTranslator } from "../src/oracle/models";
 import { EXAMPLES } from "../src/oracle/examples";
 import { pickRandom } from "../src/oracle/oracle-view";
-import { type Query, parseQuery } from "../src/oracle/query";
+import type { Query } from "../src/oracle/query";
 import { refine } from "../src/oracle/refine";
+import { mismatches } from "./compare";
 import { HOLDOUT } from "./holdout";
 import { QUESTIONS } from "./questions";
-import { mismatches } from "./compare";
 
-const out = document.getElementById("__out")!;
-const log = (line: string): void => {
-  out.textContent += line + "\n";
-};
+export type EvalSet = "questions" | "holdout" | "examples";
 
-async function run(): Promise<void> {
-  const params = new URLSearchParams(location.search);
-  const backend = params.get("backend") ?? "chrome";
-  const only = params.get("only");
-  const set = params.get("set");
-  let t0 = performance.now();
-  const progress = (f: number): void => log(`progress ${Math.round(f * 100)}%`);
-  const translator: Translator =
-    backend === "webllm"
-      ? await webLlmTranslator(progress, params.get("model") ?? undefined)
-      : await chromeTranslator(progress);
-  log(`model ready (${backend}) in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
-  const index = new OracleIndex((await (await fetch("oracle.json")).json()) as OracleFile);
-  const blocks = Math.ceil(index.size / index.albumBlock);
-  for (let k = 0; k < blocks; k++) index.setAlbums((await (await fetch(`albums/${k}.json`)).json()) as AlbumsFile);
+/** The log lines of an evaluation, ending with the score. `only`: question numbers to run. */
+export function evaluate(file: OracleFile, albums: AlbumsFile[], set: EvalSet, only?: number[], verbose = false) {
+  const index = new OracleIndex(file);
+  for (const block of albums) index.setAlbums(block);
   const engine = new OracleEngine(index);
-  // "examples": a random sample of the generated examples, expected to read as they do without a model
+  // "examples": a sample of the generated examples, which must still read as they did when generated
   const questions: [string, Partial<Query>][] =
     set === "holdout"
       ? HOLDOUT
       : set === "examples"
-        ? pickRandom([...EXAMPLES.es, ...EXAMPLES.en], 60).map((q) => [q, refine(q, { intent: "bands" }, index)])
+        ? pickRandom([...EXAMPLES.es, ...EXAMPLES.en], 200).map((q) => [q, refine(q, index)])
         : QUESTIONS;
-
+  const lines: string[] = [];
   let passed = 0;
-  let modelOnly = 0;
-  let rulesOnly = 0;
   let total = 0;
-  const times: number[] = [];
   for (const [n, [question, expected]] of questions.entries()) {
-    if (only && !only.split(",").includes(String(n))) continue;
+    if (only && !only.includes(n)) continue;
     total++;
-    t0 = performance.now();
-    let text = "";
-    try {
-      text = await translator.translate(question);
-      const seconds = (performance.now() - t0) / 1000;
-      times.push(seconds);
-      const raw = parseQuery(text);
-      const query = refine(question, raw, index);
-      const wrong = mismatches(query, expected);
-      if (!mismatches(raw, expected).length) modelOnly++;
-      if (!mismatches(refine(question, { intent: "bands" }, index), expected).length) rulesOnly++;
-      const answer = engine.run(query).answer;
-      const size = "total" in answer ? answer.total : answer.kind === "lineup" ? answer.lineups.length : "-";
-      if (!wrong.length) passed++;
-      log(`${wrong.length ? "FAIL" : "ok  "} #${n} ${seconds.toFixed(1)}s ${question}`);
-      log(`     model ${JSON.stringify(raw)}`);
-      log(
-        `     query ${JSON.stringify(query)} -> ${answer.kind} ${size}${wrong.length ? "   WRONG " + wrong.join(", ") : ""}`,
-      );
-    } catch (error) {
-      log(`ERR  #${n} ${question}: ${String(error)} :: ${text}`);
-    }
+    const query = refine(question, index);
+    const wrong = mismatches(query, expected);
+    if (!wrong.length) passed++;
+    if (!wrong.length && !verbose) continue;
+    const answer = engine.run(query).answer;
+    const size = "total" in answer ? answer.total : answer.kind === "lineup" ? answer.lineups.length : "-";
+    lines.push(`${wrong.length ? "FAIL" : "ok  "} #${n} ${question}`);
+    lines.push(
+      `     query ${JSON.stringify(query)} -> ${answer.kind} ${size}${wrong.length ? "   WRONG " + wrong.join(", ") : ""}`,
+    );
   }
-  const median = [...times].sort((a, b) => a - b)[Math.floor(times.length / 2)] ?? 0;
-  log(
-    `SCORE ${passed}/${total} (model alone ${modelOnly}, rules alone ${rulesOnly})  median ${median.toFixed(1)} s/question`,
-  );
+  lines.push(`SCORE ${passed}/${total}`);
+  return lines;
 }
-
-document.getElementById("start")!.onclick = () => {
-  run()
-    .catch((error: unknown) => log(`fatal: ${String(error)}`))
-    .finally(() => log("DONE"));
-};

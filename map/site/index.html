@@ -290,7 +290,6 @@ body.game-on .np, body.game-on .tip, body.game-on .credits { display: none !impo
 .clue small { color: var(--muted); }
 .clue .mem:not(:last-child)::after { content: " · "; color: var(--muted); }
 .clue .gph { max-height: 96px; }
-.rq { font-style: italic; line-height: 1.5; } .rq::before { content: "“"; } .rq::after { content: "”"; }
 .gph { display: block; max-width: 100%; max-height: 240px; border-radius: 4px; }
 .worth { font-size: 12.5px; color: var(--muted); } .worth b { color: var(--gold); }
 .gform { display: flex; gap: 6px; position: relative; }
@@ -374,8 +373,6 @@ body.oracle-on .np { z-index: 5; }
 .ostatus { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
 .ostatus:empty { display: none; }
 .ostatus .gbtn { padding: 3px 10px; font-size: 12.5px; margin-left: 6px; }
-.obar { display: inline-block; width: 140px; height: 4px; margin-left: 10px; vertical-align: middle; background: var(--land); border-radius: 2px; overflow: hidden; }
-.obar i { display: block; height: 100%; background: var(--gold); }
 .ospin { display: inline-block; width: 9px; height: 9px; margin-right: 8px; vertical-align: -1px; border: 2px solid var(--muted);
   border-top-color: transparent; border-radius: 50%; animation: plspin 1s linear infinite; }
 .oerr { color: #e07a6e; }

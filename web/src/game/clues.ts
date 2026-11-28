@@ -19,13 +19,11 @@ export function clueHtml(clue: Clue, ctx: ClueContext, compact = false): string 
   switch (clue) {
     case Clue.Origin: {
       // city / area + country: the country alone is often too obvious
-      const location = (band[14] ?? "").trim();
+      const location = (band[12] ?? "").trim();
       return location ? `${esc(hide(location))} <small>· ${esc(band[4])}</small>` : esc(band[4]);
     }
     case Clue.Formed:
       return String(band[3]);
-    case Clue.Review:
-      return `<q class="rq">${esc(hide(band[8] ?? ""))}</q>${band[9] != null ? ` <small>· ${t("reviewFrom", band[9])}</small>` : ""}`;
     case Clue.Lineup: {
       const members = band[5]
         .map(

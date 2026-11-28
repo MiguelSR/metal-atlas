@@ -93,7 +93,7 @@ export class GameView {
   // ---------- rounds ----------
 
   private async tracksOf(band: GameRow): Promise<Track[]> {
-    if (band[13].length) return band[13].map((t) => expandTrack(t, 600));
+    if (band[11].length) return band[11].map((t) => expandTrack(t, 600));
     const found = await searchTracks(band[1], null); // only with game.py --mixed
     return found.map((t) => ({ ...t, art: t.art.replace(/100x100bb/, "600x600bb") }));
   }
@@ -151,7 +151,7 @@ export class GameView {
       band,
       track,
       album: albumClue(
-        band[12],
+        band[10],
         tracks.map((t) => t.album),
         track.album,
       ),
@@ -416,7 +416,7 @@ export class GameView {
       src ? `<img class="${cls}" src="${esc(src)}" alt="${esc(alt)}" referrerpolicy="no-referrer">` : "";
     const last = this.roundNo >= ROUNDS;
     return `<div class="answer">
-        ${round.band[10] ? `<div class="alogo">${image(round.band[10], "glogo", t("logoOf", name))}</div>` : ""}
+        ${round.band[8] ? `<div class="alogo">${image(round.band[8], "glogo", t("logoOf", name))}</div>` : ""}
         ${image(round.band[7], "gband", t("bandPhotoOf", name))}
         <div class="ameta">${image(round.track.art, "gcover", t("coverOf", round.track.album))}
           <div class="atx"><a href="${bandUrl(id, name, slug)}" target="_blank" rel="noopener">${esc(name)}</a>

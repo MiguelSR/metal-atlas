@@ -6,6 +6,8 @@ An interactive map of the ~200,000 bands in [Encyclopaedia Metallum (Metal Archi
 
 It is a static site: `index.html`, a TypeScript front end compiled into `app.js`, and precomputed JSON files. No server and no database. It is published on **GitHub Pages**, and **a GitHub Actions job updates the data from Metal Archives every day** (see [Automatic daily update](#automatic-daily-update)).
 
+**Use of Metal Archives' data** (agreed with its webmaster, 2026-11-28): fine as long as the project stays **non-commercial**; **no review text** (reviews belong to their authors, so none is shown or stored: only review counts and ratings); **no AI** on its data (the Oracle runs on rules only); and **few requests** (the daily job only downloads what changed, with a pause between requests).
+
 ---
 
 ## Contents
@@ -43,14 +45,13 @@ The page has **three modes**, switched with the small buttons next to the title 
 ### Game mode ("Name that band")
 
 - **10 rounds.** Each one starts with a 30-second clip of a song; type the band's name (suggestions appear as you type).
-- **Points:** a correct guess with no clues is worth 7 points. Each clue you reveal costs one, and a wrong guess reveals the next clue automatically. The clues:
+- **Points:** a correct guess with no clues is worth 6 points. Each clue you reveal costs one, and a wrong guess reveals the next clue automatically. The clues:
   - Origin (city/area and country)
   - Year formed
-  - A passage from a review (with the band and album names hidden)
   - Lineup
   - An album title
   - A band photo
-- **Clues come in random order**, one at a time: the current one gets a large spotlight card ("Clue 3 of 6"), the earlier ones move to a compact list below. Only the clues a band actually has are used.
+- **Clues come in random order**, one at a time: the current one gets a large spotlight card ("Clue 3 of 5"), the earlier ones move to a compact list below. Only the clues a band actually has are used.
 - **Forgiving answers:** case, accents, punctuation and small typos are ignored.
 - **When the round ends** you see the logo, the band photo, the cover of the album that was playing, and every clue.
 - **5 difficulty levels**, by the band's position in the relevance ranking:
@@ -69,13 +70,12 @@ The page has **three modes**, switched with the small buttons next to the title 
 
 Ask about the bands in English or Spanish: *"Which country has the most black metal bands?"*, *"Thrash bands from Murcia formed in the 80s"*, *"Who plays drums in Slayer?"*, *"Bathory's first album"*, *"Bands that sing about Tolkien"*.
 
-- **Everything runs in the browser.** A small language model turns the question into a structured query (JSON); the page runs it on `oracle.json`. No server, no API key, and questions don't leave the computer.
-- **Models:** Chrome's built-in **Gemini Nano** (Prompt API, Chrome 148+ on desktop; Chrome downloads it once, ~4 GB) or, in other browsers with WebGPU, **Qwen3.5-2B** through **WebLLM** (~1.3 GB from Hugging Face, cached; 1–2 minutes to load on each visit). Nothing is downloaded until the viewer presses the button, except Gemini Nano when Chrome already has it. Without a model, the rules alone read the question (see below). **On phones and tablets** there is no model at all (Gemini Nano is desktop-only and 1.3 GB is too much for a phone): the rules alone, which score the same; the intro says so and warns about the ~7 MB of data.
-- **The model only translates, and the question has the last word.** Small models invent filters nobody asked for (a country, a genre, a sort) and miss plain cues, so `refine` (web/src/oracle/refine.ts) reads the explicit cues with rules (years and decades, status, "how many", "which country… most", lineups, albums, the oldest/best rated…) and keeps what the model adds only when the question backs it. Words are matched to the data through a vocabulary (`web/src/oracle/vocab.ts`): ~300 lyrical theme concepts (Spanish and English words -> the English stems Metal Archives uses, e.g. "cristianismo", "Christianity" -> christian, christ, church, god…) and Spanish place names ("Gotemburgo" -> Gothenburg).
-- **An intro panel** explains this the first time (slow at first, what it knows and what it doesn't); "How does it work?" shows it again. **Eight example questions** are one click away, picked at random when the Oracle first opens (🎲 for others; they stay put otherwise) from 1,044 per language generated from the data by `npm run examples` (`web/eval/make-examples.ts`): templates filled with real genres, countries, cities, themes, bands and labels, each kept only if the rules alone read it as intended and the answer is satisfying (at least 3 bands, a lineup with that member, albums…).
-- **Every answer shows how the question was understood** (chips) and how long it took, with which model.
+- **Everything runs in the browser, without AI.** Rules turn the question into a structured query and the page runs it on `oracle.json`. No server, no API key, and questions don't leave the computer. **No language model:** there used to be an optional one (Gemini Nano or WebLLM) to translate the question, but Metal Archives doesn't allow its data to be used with AI (its webmaster, 2026-11-28), and it added nothing measurable over the rules, so it was removed.
+- **The rules:** `refine` (web/src/oracle/refine.ts) reads the explicit cues (years and decades, status, "how many", "which country… most", lineups, albums, "the second album", the oldest/best rated…) and the names the data knows (bands, even misspelt; labels; places; genres). A question it reads nothing from is answered with "I can't answer that" rather than a list of every band. Words are matched to the data through a vocabulary (`web/src/oracle/vocab.ts`): ~300 lyrical theme concepts (Spanish and English words -> the English stems Metal Archives uses, e.g. "cristianismo", "Christianity" -> christian, christ, church, god…) and Spanish place names ("Gotemburgo" -> Gothenburg).
+- **An intro panel** explains this the first time (what it downloads, what it knows and what it doesn't); "How does it work?" shows it again. **Eight example questions** are one click away, picked at random when the Oracle first opens (🎲 for others; they stay put otherwise) from 1,104 per language generated from the data by `npm run examples` (`web/eval/make-examples.ts`): templates filled with real genres, countries, cities, themes, bands and labels, each kept only if the rules alone read it as intended and the answer is satisfying (at least 3 bands, a lineup with that member, albums…).
+- **Every answer shows how the question was understood** (chips) and how long it took.
 - **What it can answer:** lists of bands (by genre words — optionally **pure**: "pure doom", "doom sin mezclar", "only thrash" keep bands whose every genre is that one, so "Doom/Grindcore" or "Blackened Doom" are left out, while heavy and rock count as part of doom ("Heavy/Doom", "Doom Rock") —, country, place, formation years, status — including "changed name" —, lyrical themes, label or **unsigned**, member, **band name** (named exactly, starting with, containing or ending with a word), **number of reviews** ("between 5 and 10", "more than 20", "no reviews") and **average rating** ("above 90%")), counts, rankings (by country, genre, label, place, year, decade, status, or **lyrical theme**: "the most common theme among 80s doom bands"), sorted by relevance, reviews, rating or age, from either end ("lowest rated", "fewest reviews" among bands that have some); the discography of every band and the current lineup of the ~6,000 game bands. **What it can't (yet):** lyrics, songs, former members, similar bands, covers: it says so instead of guessing.
-- **Quality**, measured with `npm run eval --prefix web` (headless Chrome, 72 questions in `web/eval/`): on questions written after the rules (an honest test), Gemini Nano + rules got 17/20 right; Gemini Nano alone 9/20; the rules alone 17/20. After the theme vocabulary: 94/94 on all evaluation questions and 22/22 on a fresh set of theme questions, the same with or without the model. Gemini Nano takes ~1.4 s per question, Qwen3.5-2B ~6 s.
+- **Quality**, measured with `npm run eval --prefix web` (the rules on the questions in `web/eval/`, many of them from the owner's reports): 128/128, and every generated example still reads as when it was generated. When the model existed it was measured too: on questions written after the rules, Gemini Nano + rules 17/20, the rules alone 17/20, Gemini Nano alone 9/20.
 
 ### Language
 
@@ -109,7 +109,7 @@ The interface is in **English and Spanish**. It follows the browser's language a
 │   ├── reviews.py                 full review list -> review counts
 │   ├── regions.py                 band -> region, and region geometry
 │   ├── build.py                   map data (map/site/*.json), relevance score
-│   ├── members.py                 game clues: lineup, photo, logo, review passage
+│   ├── members.py                 game clues: lineup, photo, logo
 │   ├── verify.py                  iTunes matching
 │   ├── game.py                    game.json and previews.json
 │   ├── oracle.py                  oracle.json, the data the Oracle answers from
@@ -130,10 +130,10 @@ The interface is in **English and Spanish**. It follows the browser's language a
 │   │   ├── itunes.ts, player.ts     previews (verified or live search) and the map's ▶ player
 │   │   ├── map/                     world map (d3), legend, country/region card, band search, header controls
 │   │   ├── game/                    rules (pure), clues, sound check, the game view
-│   │   └── oracle/                  query language, prompt, models (Gemini Nano / WebLLM), refine rules, engine, view
+│   │   └── oracle/                  query language, refine rules, vocabulary, engine, view
 │   ├── test/                      Vitest suite
-│   ├── eval/                      Oracle evaluation questions (questions.ts, holdout.ts) and the in-browser runner
-│   └── scripts/eval-oracle.mjs    runs the evaluation in headless Chrome
+│   ├── eval/                      Oracle evaluation questions (questions.ts, holdout.ts), scoring, example generator
+│   └── scripts/eval-oracle.mjs    runs the evaluation (node)
 ├── map/                         <- site and map data
 │   ├── site/                      the website: index.html (in git) + generated JSON (in the data release)
 │   │   ├── index.html               the page: HTML + CSS (loads app.js)
@@ -149,7 +149,7 @@ The interface is in **English and Spanish**. It follows the browser's language a
 │   ├── public/                    what gets published (generated by `bundle`)
 │   ├── update_state.json          date of the last update (in git: the daily job commits it)
 │   ├── ma_countries.json          Metal Archives country codes (for search links)
-│   ├── reviews_pages/, reviews_new/, reviews_by_band.json   review lists and counts
+│   ├── review_keys.json, reviews_by_band.json   reviews counted (ids and rating only) and counts per band
 │   ├── geo_dl/                    Natural Earth (regions) and GeoNames (cities) downloads
 │   └── regions_out/               band -> region, and region geometry per country
 └── scraper/                     <- scraper caches
@@ -187,7 +187,7 @@ iTunes ─────────verify───► scraper/itunes/, disco/ ─
 | 3 | `reviews` | Downloads the alphabetical list of all reviews (~700 pages) and counts reviews and average rating per band (each review once). | once |
 | 4 | `regions` | Places each band in a region from its "Location" field, using GeoNames and Natural Earth. | ~15 s |
 | 5 | `build` | Splits genres, resolves "International" bands, computes relevance and writes the site's JSON. | ~15 s |
-| 6 | `members` | For the 6,000 most relevant bands: lineup, photo, logo and a review passage without names. | ~3 h the first time |
+| 6 | `members` | For the 6,000 most relevant bands: lineup, photo and logo. | ~1 h the first time |
 | 7 | `verify` | Looks up each game band on iTunes and confirms which artist is the right one by comparing albums (see [iTunes verification](#itunes-verification)). | ~20 h the first time (one call every 6 s) |
 | 8 | `game` | Puts everything together in `game.json` and `previews.json`. | seconds |
 | – | `discographies backfill` | Downloads the discography of every band (one page per band, ~5–6 days, resumable) into `scraper/discographies.jsonl`. | days (once) |
@@ -251,7 +251,7 @@ The front end needs **Node 26**: `npm run build --prefix web` (compile `map/site
 4. Commits `map/update_state.json` with a message like *"Data update: changes up to 2026-11-24 05:52"*, so the repo history shows every update.
 5. Publishes the site (it calls `pages.yml`).
 
-A typical day takes 20–40 minutes (about 1,000 changed bands at ~1.3 s each; the first run, 1,369 bands, took 28 minutes). If nothing changed, it stops after step 2.
+A typical day takes 20–40 minutes: a few hundred changed bands, each a band page and a discography (~2 s each), plus the bands with upcoming releases not checked for a month. That is roughly 1,000–1,500 requests a day. If nothing changed, it stops after step 2.
 
 - **Run it by hand:** the repo's **Actions** tab → *Daily update* → *Run workflow*, or `gh workflow run daily.yml`.
 - **Follow it:** `gh run list --workflow daily.yml`, or `gh run watch`.
@@ -309,18 +309,19 @@ What `update` does:
 1. **Finds what changed** by reading two Metal Archives lists, month by month and page by page (200 per page, newest first), until it reaches the date of the last update:
    - *What's new* (`archives/ajax-band-list/selection/YYYY-MM/by/created`)
    - *What's updated* (`…/by/modified`)
-2. **Finds new reviews** in the monthly "latest reviews" list (`review/ajax-list-browse/by/date/selection/YYYY-MM`). A review is identified by its album id and the reviewer's user id (a user reviews an album only once), so the ones already counted are skipped. This updates the review count of **every** band, not just the changed ones.
+2. **Finds new reviews** in the monthly "latest reviews" list (`review/ajax-list-browse/by/date/selection/YYYY-MM`). A review is identified by its album id and the reviewer's user id (a user reviews an album only once), so the ones already counted (`review_keys.json`) are skipped. Only those ids, the band and the rating are kept: no review text or title. This updates the review count of **every** band, not just the changed ones.
 3. **Downloads the band page** of each new or changed band (1 request), plus:
    - **new bands:** an exact-name search, the only place that lists their aliases (a.k.a.);
-   - **game bands:** lineup, photo and logo (from the same page) and their discography.
+   - **game bands:** lineup, photo and logo (from the same page).
+   - Bands changed only in the overlap day (see below) were downloaded by the previous run and are skipped.
    - Bands that return 404 (deleted from Metal Archives) are removed.
-4. **Refreshes discographies** (`discographies.refresh`, at most 2 hours): the changed bands, the bands with upcoming releases, and the 1,000 least recently checked (bands never downloaded first), so every discography is re-read about every 200 days.
+4. **Refreshes discographies** (`discographies.refresh`, at most 2 hours): the changed bands, the bands never downloaded, and the bands with upcoming releases not checked for 30 days. There is no rotation over every band (Metal Archives asked for fewer requests), so an album added to a band that doesn't otherwise change and was never announced as upcoming is missed.
 5. **Saves** the master dataset (keeping the previous one as `~/metal_archives_bands.json.bak`) and `reviews_by_band.json`.
 6. **Rebuilds:** `regions` → `build` → `members` and `verify` (only for bands new to the top 6,000) → `game` → `bundle`.
 7. **Records** the date of the newest change in `update_state.json`.
 
 **How it knows where to start:** `map/update_state.json` (`{"since": "YYYY-MM-DD HH:MM"}`, in Metal Archives server time, about 6 h behind Central European time).
-- It **always** starts one day earlier, to be safe: going over a band twice does no harm.
+- It **always** reads the lists from one day earlier, to be safe, but only downloads bands changed at or after the last update's newest change.
 - **If the file does not exist**, it starts from 2026-11-20 (the full scrape was on 2026-11-21).
 - **To force a date**, use `--since`.
 
@@ -389,7 +390,7 @@ pre-commit run --all-files     # every check
 pytest                         # Python tests
 black metal_atlas tests        # format Python
 npm run check --prefix web     # front end: prettier --check, tsc, eslint, vitest
-npm run eval --prefix web -- --backend chrome|webllm [--set holdout|examples]   # score the Oracle's model (headless Chrome)
+npm run eval --prefix web -- [--set holdout|examples] [--verbose]   # score the Oracle's rules
 npm run examples --prefix web  # regenerate the Oracle's example questions from map/site/oracle.json
 npm run format --prefix web    # format the front end
 ```
@@ -400,7 +401,7 @@ npm run format --prefix web    # format the front end
 
 The tests never touch the network: Metal Archives pages are reproduced as trimmed fragments with the same structure (`tests/fixtures.py`), and HTTP calls are replaced by fakes. They cover the parsers (band pages, lineups, discographies, review and change lists), genre and location parsing, the relevance score, region placement, iTunes matching (namesakes, self-titled albums), track selection for the game, the update's date logic and the data release packing.
 
-The front-end tests (`web/test/`, Vitest) cover the logic without the DOM: answer checking (typos, "the", accents), name masking, clue order, album clue and verdicts; counts under year and name filters; genre search; verified previews vs live iTunes search (namesakes, artists taken by verified bands) with a fake `fetch`; Metal Archives search links; clue HTML; the legend; translations (both languages complete); the Oracle's query parsing, engine (filters, sorts, rankings, lineups, albums) and `refine` rules. The models are scored separately with `npm run eval` (they need Chrome and a GPU). The views themselves (map, card, game screens) are checked in a headless browser (see `CLAUDE.md`).
+The front-end tests (`web/test/`, Vitest) cover the logic without the DOM: answer checking (typos, "the", accents), name masking, clue order, album clue and verdicts; counts under year and name filters; genre search; verified previews vs live iTunes search (namesakes, artists taken by verified bands) with a fake `fetch`; Metal Archives search links; clue HTML; the legend; translations (both languages complete); the Oracle's engine (filters, sorts, rankings, lineups, albums, album blocks) and `refine` rules, which `npm run eval` also scores on the evaluation questions. The views themselves (map, card, game screens) are checked in a headless browser (see `CLAUDE.md`).
 
 ### Code conventions
 
@@ -442,13 +443,13 @@ Compact (arrays instead of objects) to keep them small.
 | `bands.json` | Global index for the band search and the game: parallel columns `n` (names), `y` (years), `a` (active), `g` (genres), `l` (country + regions), `id`, `s` (non-standard slugs). Sorted by relevance. |
 | `oracle.json` | Parallel columns over every band, by relevance: `id`, `name`, `year`, `status`, `genre` / `location` / `themes` / `label` (indices into `dicts`), `g` (normalized genres), `country`, `reviews`, `rating`; `lineups` and `albums` keyed by row for the game bands. ~22 MB (~7 MB compressed), loaded only when the Oracle opens. See `metal_atlas/oracle.py`. |
 | `albums/<k>.json` | Discographies in blocks of `albumBlock` (1,000) rows of `oracle.json`: `from` (first row) and `a`, one item per row: `[[album id, title, type, year], …]`, or 0 when the discography isn't known. ~32 MB in all (~12 MB compressed), so the page loads only the blocks of the bands a question is about (one band: one block, 35–520 KB compressed); a question over every band ("albums from 1990") loads them all. |
-| `game.json` | `levels`: 5 lists of indices. `b`: rows `[id, name, slug, year, countries, members, lineup header, photo, review, review %, logo, iTunes artist id, [albums], [[preview url, song, album, cover], …], location]`. Up to 5 songs per band, from different albums, with shortened URLs (`game` strips the common prefix, `index.html` puts it back). |
+| `game.json` | `levels`: 5 lists of indices. `b`: rows `[id, name, slug, year, countries, members, lineup header, photo, logo, iTunes artist id, [albums], [[preview url, song, album, cover], …], location]`. Up to 5 songs per band, from different albums, with shortened URLs (`game` strips the common prefix, `index.html` puts it back). |
 
 ### Scraper caches
 
 | File | Contents |
 |---|---|
-| `members/<id>.json` | `{h: lineup header, m: [[name, instrument]…], p: photo, lg: logo, r: review passage, ra: reviewed album, rs: rating}` |
+| `members/<id>.json` | `{h: lineup header, m: [[name, instrument]…], p: photo, lg: logo}` |
 | `disco/<id>.json` | `[[album id, title, type, year], …]` |
 | `itunes/<id>.json` | `{a: artist id, c: [matching album ids], n: [matching titles], t: [[preview, song, album, cover]…], v: 3}`. An empty `t` means the band was not found on iTunes. |
 
@@ -512,10 +513,6 @@ They come from the **iTunes Search API**: free, no key, and callable from the br
 4. The winner is the candidate with the most albums whose title matches the discography. Titles are normalized without "Remastered", "Deluxe", parentheses, etc. A self-titled album only counts if the year matches too (±1).
 5. Keeps up to 12 songs, **only from the matching albums**. So when iTunes mixes two namesake bands on one artist page (it happened with Graveyard from Spain and from Sweden), only the right one plays.
 
-### Review passage
-
-`metal_atlas/members.py` (`review_passage`) takes the band's highest-rated review and looks for a 140–320 character stretch of whole sentences that mentions neither the band nor the album. It prefers middle paragraphs, which tend to describe the sound.
-
 ---
 
 ## Limits and known issues
@@ -525,7 +522,6 @@ They come from the **iTunes Search API**: free, no key, and callable from the br
   - `verify` makes one call every 6 s and pauses 15–30 min on a 403.
   - If more speed were ever needed, the official route is the Apple Music API, which requires an Apple Developer account.
 - **Live search (map ▶, unverified bands with a unique name):** an iTunes artist with the same name that is not the band may still play.
-- **Review passages can mention band members** (e.g. a singer's name). The filter only hides the band and album names.
 - **`game.json` is readable:** a curious player could look up the URL of the song that is playing. It was obfuscated once and the obfuscation was removed on purpose.
 - **Duplicate reviews in the initial scrape:** the full review list has 137,809 rows but 135,553 distinct reviews (rows probably repeated while paginating). Some bands' review counts are inflated by about 1.6 %; the effect on relevance is minimal.
 - **`update` does not detect:**

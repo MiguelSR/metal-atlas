@@ -70,7 +70,6 @@ export function themeOf(word: string): string {
 }
 
 /** Whether a word is a known theme concept. */
-export const isConcept = (key: string): boolean => BY_KEY.has(key);
 
 /** What to search in the bands' themes for a query theme: the concept's stems, or the word itself. */
 export function themeStems(theme: string): string[] {

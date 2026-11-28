@@ -1,6 +1,6 @@
 import datetime as dt
 
-from metal_atlas.update import FIRST_SINCE, OVERLAP, DatasetUpdater, months, start_date
+from metal_atlas.update import FIRST_SINCE, OVERLAP, DatasetUpdater, changed_after, months, start_date
 
 
 def test_months_spans_year_boundaries():
@@ -24,3 +24,10 @@ def test_dataset_records_keep_the_dataset_fields_in_order():
     assert [r["id"] for r in records] == [1, 2]
     assert list(records[0])[:3] == ["id", "name", "aka"]
     assert "extra" not in records[1]
+
+
+def test_changed_after_skips_bands_already_downloaded_in_the_overlap():
+    last = dt.datetime(2026, 11, 27, 10, 0)
+    changes = {1: dt.datetime(2026, 11, 26, 23, 0), 2: last, 3: dt.datetime(2026, 11, 27, 12, 30)}
+    assert changed_after(changes, last) == {2, 3}
+    assert changed_after(changes, None) == {1, 2, 3}

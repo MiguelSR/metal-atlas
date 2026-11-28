@@ -8,13 +8,12 @@ export const ROUNDS = 10;
 export enum Clue {
   Origin = 0,
   Formed = 1,
-  Review = 2,
-  Lineup = 3,
-  Album = 4,
-  Photo = 5,
+  Lineup = 2,
+  Album = 3,
+  Photo = 4,
 }
 
-export const ALL_CLUES: readonly Clue[] = [Clue.Origin, Clue.Formed, Clue.Review, Clue.Lineup, Clue.Album, Clue.Photo];
+export const ALL_CLUES: readonly Clue[] = [Clue.Origin, Clue.Formed, Clue.Lineup, Clue.Album, Clue.Photo];
 export const CLUE_COUNT = ALL_CLUES.length;
 /** a correct guess with no clues; each revealed clue costs one point */
 export const MAX_POINTS = CLUE_COUNT + 1;
@@ -53,7 +52,7 @@ export function isCorrectGuess(guess: string, name: string): boolean {
 const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export const MASK = "▒▒▒";
 
-/** Hides the band's name in a clue ("Iron Maiden" in its own review). A clue that is only the name is self-titled. */
+/** Hides the band's name in a clue ("Iron Maiden" in a member's name, a self-titled album). A clue that is only the name is self-titled. */
 export function maskName(text: string, bandName: string, selfTitled: string): string {
   if (bandName.length < 3) return text;
   const masked = text.replace(new RegExp(escapeRegExp(bandName), "gi"), MASK);
@@ -69,9 +68,8 @@ export function shuffled<T>(items: readonly T[], random: () => number = Math.ran
   return out;
 }
 
-/** Whether the band has data for a clue (only the review and the photo can be missing). */
+/** Whether the band has data for a clue (only the photo can be missing). */
 export function hasClue(band: GameRow, clue: Clue): boolean {
-  if (clue === Clue.Review) return !!band[8];
   if (clue === Clue.Photo) return !!band[7];
   return true;
 }

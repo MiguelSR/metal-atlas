@@ -19,14 +19,12 @@ describe("clues", () => {
   const ctx = { band: gameBand(), album: "Nevermore", masked: true, t };
 
   it("hides the band's name until the round ends", () => {
-    expect(clueHtml(Clue.Review, ctx)).toContain("▒▒▒ at their best");
-    expect(clueHtml(Clue.Review, { ...ctx, masked: false })).toContain("Nevermore at their best");
     expect(clueHtml(Clue.Album, ctx)).toBe("<i>▒▒▒ (self-titled)</i>");
   });
 
   it("shows city and country, the lineup and its era", () => {
     expect(clueHtml(Clue.Origin, ctx)).toBe("Seattle, Washington <small>· United States</small>");
-    expect(clueHtml(Clue.Origin, { ...ctx, band: gameBand({ 14: null }) })).toBe("United States");
+    expect(clueHtml(Clue.Origin, { ...ctx, band: gameBand({ 12: null }) })).toBe("United States");
     const lineup = clueHtml(Clue.Lineup, ctx);
     expect(lineup).toContain("Warrel Dane <small>· Vocals</small></span><br>");
     expect(lineup).toContain("(last known)");
@@ -34,7 +32,7 @@ describe("clues", () => {
   });
 
   it("escapes data", () => {
-    expect(clueHtml(Clue.Origin, { ...ctx, band: gameBand({ 14: "<script>" }) })).toContain("&lt;script&gt;");
+    expect(clueHtml(Clue.Origin, { ...ctx, band: gameBand({ 12: "<script>" }) })).toContain("&lt;script&gt;");
   });
 });
 

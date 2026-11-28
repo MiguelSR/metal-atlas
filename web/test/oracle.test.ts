@@ -6,7 +6,7 @@ import { describeQuery } from "../src/oracle/describe";
 import { OracleEngine, needsAlbums, roleNeedle } from "../src/oracle/engine";
 import { EXAMPLES } from "../src/oracle/examples";
 import { pickRandom } from "../src/oracle/oracle-view";
-import { type Query, extractJson, parseQuery } from "../src/oracle/query";
+import type { Query } from "../src/oracle/query";
 import { type Vocabulary, countriesIn, ratingIn, refine, reviewsIn, yearsIn } from "../src/oracle/refine";
 import { conceptsIn, themeOf } from "../src/oracle/themes";
 
@@ -72,21 +72,6 @@ index.setAlbums({
 });
 const engine = new OracleEngine(index);
 const run = (query: Query) => engine.run(query).answer;
-
-describe("query parsing", () => {
-  it("keeps valid fields and drops the rest", () => {
-    const query = parseQuery(
-      '```json\n{"intent":"bands","genre":"thrash","country":" Spain ","formedFrom":"1980","status":"Alive","limit":500,"x":1}\n```',
-    );
-    expect(query).toEqual({ intent: "bands", genre: ["thrash"], country: "Spain", formedFrom: 1980, limit: 50 });
-  });
-
-  it("turns a ranking without grouping into a list, and rejects non-queries", () => {
-    expect(parseQuery({ intent: "top" }).intent).toBe("bands");
-    expect(() => parseQuery('{"intent":"dance"}')).toThrow();
-    expect(() => extractJson("no idea")).toThrow();
-  });
-});
 
 describe("misspelt band names", () => {
   it("counts edits, swaps included, up to a maximum", () => {
@@ -175,7 +160,7 @@ describe("engine", () => {
   });
 
   it("reads which album of a band is asked for", () => {
-    const read = (q: string) => refine(q, { intent: "bands" }, vocab);
+    const read = (q: string) => refine(q, vocab);
     expect(read("¿Cuál es el segundo disco de Slayer?")).toMatchObject({ sort: "oldest", limit: 1, offset: 1 });
     expect(read("Slayer's third album")).toMatchObject({ sort: "oldest", offset: 2 });
     expect(read("4º disco de Slayer")).toMatchObject({ offset: 3 });
@@ -265,21 +250,21 @@ const fuzzy: Vocabulary = {
   closestBand: (n) => ({ "misty gray": "Misty Grey", "black sabath": "Black Sabbath" })[n] ?? null,
   isBand: (n) => vocab.isBand(n) || ["misty grey", "black sabbath", "black"].includes(n),
 };
-const rules = (question: string, model: Query = { intent: "bands" }): Query => refine(question, model, vocab);
+const rules = (question: string): Query => refine(question, vocab);
 
 describe("refine: the question's own cues", () => {
   it("reads a misspelt band name as the closest band, or keeps it when none is close (owner's report)", () => {
-    expect(refine("¿Cuál es el primer disco de Misty Gray?", { intent: "bands" }, fuzzy)).toMatchObject({
+    expect(refine("¿Cuál es el primer disco de Misty Gray?", fuzzy)).toMatchObject({
       intent: "albums",
       band: "Misty Grey",
       sort: "oldest",
     });
     // the misspelt full name beats "Black", a band inside it, and "black" isn't a genre there
-    const sabbath = refine("Primer disco de Black Sabath", { intent: "bands" }, fuzzy);
+    const sabbath = refine("Primer disco de Black Sabath", fuzzy);
     expect(sabbath.band).toBe("Black Sabbath");
     expect(sabbath.genre).toBeUndefined();
-    expect(refine("Discos de Zzqxwv Blorp", { intent: "bands" }, fuzzy).band).toBe("Zzqxwv Blorp");
-    expect(refine("Primer disco de doom de España", { intent: "bands" }, fuzzy).band).toBeUndefined();
+    expect(refine("Discos de Zzqxwv Blorp", fuzzy).band).toBe("Zzqxwv Blorp");
+    expect(refine("Primer disco de doom de España", fuzzy).band).toBeUndefined();
   });
 
   it("reads names containing a word, film noir and lowercase places (owner's reports)", () => {
@@ -290,21 +275,19 @@ describe("refine: the question's own cues", () => {
     expect(rules("bands with Witch in their name")).toMatchObject({ name: "Witch", nameMatch: "contains" });
     expect(rules("Bandas que hablen de cine negro").themes).toEqual(["film noir"]);
     const places: Vocabulary = { ...vocab, place: (n) => ({ motril: "Motril", murcia: "Murcia" })[n] ?? null };
-    expect(refine("bandas de motril", { intent: "bands" }, places).location).toBe("Motril");
-    // the model's place only if the question names it
-    expect(refine("bandas de motril", { intent: "bands", location: "Murcia" }, places).location).toBe("Motril");
+    expect(refine("bandas de motril", places).location).toBe("Motril");
     // album questions: "bandas de X" is where the bands are from, and only known places count
-    const albums = refine("discos de bandas de Motril", { intent: "bands" }, places);
+    const albums = refine("discos de bandas de Motril", places);
     expect(albums).toMatchObject({ intent: "albums", location: "Motril" });
     expect(albums.band).toBeUndefined();
-    expect(refine("Primer disco de Zzqxwv Blorp", { intent: "bands" }, places)).toMatchObject({ band: "Zzqxwv Blorp" });
-    expect(refine("bandas de culto", { intent: "bands", location: "Murcia" }, places).location).toBeUndefined();
+    expect(refine("Primer disco de Zzqxwv Blorp", places)).toMatchObject({ band: "Zzqxwv Blorp" });
+    expect(refine("bandas de culto", places).location).toBeUndefined();
   });
 
   it("reads band names in lowercase, and an unknown one as a band rather than every band", () => {
     expect(rules("primer disco de bathory")).toMatchObject({ intent: "albums", band: "bathory", sort: "oldest" });
     expect(rules("quién canta en iron maiden").band).toBe("iron maiden");
-    expect(refine("primer disco de misty gray", { intent: "bands" }, fuzzy).band).toBe("Misty Grey");
+    expect(refine("primer disco de misty gray", fuzzy).band).toBe("Misty Grey");
     expect(rules("primer disco de zzqxwv blorp").band).toBe("zzqxwv blorp");
     expect(rules("primer disco de doom")).toMatchObject({ genre: ["doom"] });
     expect(rules("primer disco de doom").band).toBeUndefined();
@@ -546,23 +529,14 @@ describe("refine: the question's own cues", () => {
   });
 });
 
-describe("refine: what the model adds", () => {
-  it("drops filters the question doesn't back", () => {
-    const invented: Query = { intent: "bands", location: "Murcia", themes: ["war", "violence"] };
-    expect(rules("Bandas de thrash de Murcia", invented)).toEqual({
+describe("refine: places, rankings and limits", () => {
+  it("reads only what the question says", () => {
+    expect(rules("Bandas de thrash de Murcia")).toEqual({
       intent: "bands",
       location: "Murcia",
       genre: ["thrash"],
     });
-    const model: Query = {
-      intent: "top",
-      groupBy: "year",
-      country: "Brazil",
-      genre: ["black"],
-      missing: "lyrics",
-      limit: 1,
-    };
-    expect(rules("Las 5 bandas mejor valoradas de Grecia", model)).toEqual({
+    expect(rules("Las 5 bandas mejor valoradas de Grecia")).toEqual({
       intent: "bands",
       country: "Greece",
       sort: "rating",
@@ -570,26 +544,17 @@ describe("refine: what the model adds", () => {
     });
   });
 
-  it("keeps the model's translations of places and themes", () => {
-    expect(rules("Grupos de sludge de Nueva Orleans", { intent: "bands", location: "New Orleans" })).toMatchObject({
-      location: "New Orleans",
-    });
-    expect(rules("Bandas que cantan sobre la guerra", { intent: "bands", themes: ["war"] })).toEqual({
-      intent: "bands",
-      themes: ["war"],
-    });
-    expect(rules("Bandas de Sevilla", { intent: "bands", location: "Sevilla" })).toMatchObject({ location: "Seville" });
+  it("answers 'can't' when it reads nothing", () => {
+    expect(rules("¿Cuál es el sentido de la vida?")).toEqual({ intent: "unsupported", missing: "other" });
   });
 
-  it("finds labels and keeps the model's 'can't answer' when nothing else is found", () => {
-    expect(rules("Bandas de Nuclear Blast de Alemania", { intent: "bands", genre: ["nuclear", "blast"] })).toEqual({
+  it("translates places and themes, and finds labels", () => {
+    expect(rules("Bandas que cantan sobre la guerra")).toEqual({ intent: "bands", themes: ["war"] });
+    expect(rules("Bandas de Sevilla")).toMatchObject({ location: "Seville" });
+    expect(rules("Bandas de Nuclear Blast de Alemania")).toEqual({
       intent: "bands",
       label: "Nuclear Blast",
       country: "Germany",
-    });
-    expect(rules("¿Cuál es el sentido de la vida?", { intent: "unsupported", missing: "other" })).toEqual({
-      intent: "unsupported",
-      missing: "other",
     });
   });
 });

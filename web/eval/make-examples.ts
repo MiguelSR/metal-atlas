@@ -481,7 +481,7 @@ export function makeExamples(
       const list = kept.get(template) ?? [];
       kept.set(template, list);
       if (list.length >= perTemplate || list.includes(question)) continue;
-      const query = refine(question, { intent: "bands" }, index);
+      const query = refine(question, index);
       const extra = Object.keys(query).filter((k) => !(k in expected));
       if (extra.length || mismatches(query, expected).length) {
         rejected++;

@@ -52,11 +52,10 @@ describe("game rules", () => {
   });
 
   it("only uses the clues a band has", () => {
-    expect(clueOrder(gameBand())).toHaveLength(6);
-    const noPhotoNoReview = clueOrder(gameBand({ 7: null, 8: null }));
-    expect(noPhotoNoReview).toHaveLength(4);
-    expect(noPhotoNoReview).not.toContain(Clue.Photo);
-    expect(noPhotoNoReview).not.toContain(Clue.Review);
+    expect(clueOrder(gameBand())).toHaveLength(5);
+    const noPhoto = clueOrder(gameBand({ 7: null }));
+    expect(noPhoto).toHaveLength(4);
+    expect(noPhoto).not.toContain(Clue.Photo);
   });
 
   it("picks an album other than the one playing", () => {
@@ -67,9 +66,9 @@ describe("game rules", () => {
   });
 
   it("gives a verdict from the final score", () => {
-    expect(MAX_POINTS).toBe(7);
-    expect(verdictIndex(70)).toBe(0);
-    expect(verdictIndex(42)).toBe(1);
+    expect(MAX_POINTS).toBe(6); // five clues
+    expect(verdictIndex(60)).toBe(0);
+    expect(verdictIndex(36)).toBe(1);
     expect(verdictIndex(0)).toBe(4);
   });
 

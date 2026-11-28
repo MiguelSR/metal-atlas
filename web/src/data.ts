@@ -79,8 +79,6 @@ export type GameRow = [
   members: [string, string][],
   lineupHeader: string,
   photo: string | null,
-  review: string | null,
-  reviewRating: number | null,
   logo: string | null,
   itunesArtist: number | null,
   albums: string[],

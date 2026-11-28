@@ -3,8 +3,8 @@
 game.json, for the most relevant bands that have a lineup (`members`), a formation year and, unless --mixed,
 iTunes songs verified against their discography (`verify`):
     {"levels": [[row index, …] × 5], "b": [row, …]}
-    row = [id, name, slug|0, year, countries, members, lineup header, photo, review passage, review rating, logo,
-           iTunes artist id, [album titles], [[preview, song, album, cover], …], location]
+    row = [id, name, slug|0, year, countries, members, lineup header, photo, logo, iTunes artist id,
+           [album titles], [[preview, song, album, cover], …], location]
 Difficulty levels are slices of the relevance ranking.
 
 previews.json, loaded by the map on the first ▶ click:
@@ -82,8 +82,6 @@ class GameBuilder:
             members["m"][:MAX_MEMBERS],
             members["h"] or "",
             members.get("p"),
-            members.get("r"),
-            members.get("rs"),
             members.get("lg"),
             (itunes or {}).get("a"),
             album_titles(discography)[:MAX_ALBUMS],

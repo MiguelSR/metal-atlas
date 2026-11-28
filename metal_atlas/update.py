@@ -4,10 +4,10 @@
      the last update (minus a day of overlap, to be safe); and the monthly "latest reviews" list, for the review
      count of every band.
   2. One request per new or changed band: its band page. New bands also get an exact-name search (the only place
-     with their a.k.a.); game bands also refresh their lineup, photo, logo and discography. Bands whose page is gone
+     with their a.k.a.); game bands also refresh their lineup, photo and logo. Bands whose page is gone
      (deleted) are removed.
-  3. Discographies, for the Oracle: the changed bands, those with upcoming releases, and the 1,000 least recently
-     checked, within two hours (see discographies.py).
+  3. Discographies, for the Oracle and the game's album clue: the changed bands, then those with upcoming releases
+     not checked for a month, within two hours (see discographies.py).
   4. Rebuild: regions -> build -> members + verify (bands new to the game) -> game -> oracle (the publish workflow
      then builds the front end and bundles the site).
 
@@ -41,6 +41,12 @@ def months(since: dt.datetime, until: dt.datetime) -> Iterator[tuple[int, int]]:
     while (year, month) <= (until.year, until.month):
         yield year, month
         year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+
+
+def changed_after(changes: dict[int, dt.datetime], last: dt.datetime | None) -> set[int]:
+    """The bands changed since the last update's newest change: the overlap day is re-read to be safe, but bands
+    already downloaded then are not downloaded again (Metal Archives asked for fewer requests, 2026-11-28)."""
+    return {band_id for band_id, when in changes.items() if last is None or when >= last}
 
 
 def start_date(state: dict | None, override: str | None) -> dt.datetime:
@@ -79,17 +85,12 @@ def read_changes(kind: str, since: dt.datetime, now: dt.datetime) -> dict[int, d
 
 @dataclass
 class NewReviews:
-    pages: dict[str, dict] = field(default_factory=dict)  # file name -> list page, kept in reviews_new/
     reviews: list[ma.Review] = field(default_factory=list)
 
 
 def known_review_keys() -> set[tuple[int, int]]:
-    """Reviews already counted: the full review list plus the monthly lists read by earlier updates."""
-    keys: set[tuple[int, int]] = set()
-    for folder in (paths.REVIEWS_PAGES_DIR, paths.REVIEWS_NEW_DIR):
-        for page in folder.glob("*.json"):
-            keys.update(k for row in read_json(page)["aaData"] if (k := ma.review_key(row[1])))
-    return keys
+    """Reviews already counted (review_keys.json)."""
+    return {(album, user) for album, user, *_ in read_json(paths.REVIEW_KEYS) or []}
 
 
 def read_new_reviews(since: dt.datetime, now: dt.datetime, known: set[tuple[int, int]]) -> NewReviews:
@@ -99,7 +100,6 @@ def read_new_reviews(since: dt.datetime, now: dt.datetime, known: set[tuple[int,
         while total is None or start < total:
             data = fetch_json(ma.reviews_by_date_url(year, month, start))
             total = data["iTotalRecords"]
-            found.pages[f"{year}-{month:02d}_{start}.json"] = data
             for row in data["aaData"]:
                 review = ma.parse_review_row(row)
                 if review and review.key not in known:
@@ -148,14 +148,10 @@ class DatasetUpdater:
 
     @staticmethod
     def refresh_game_band(band_id: int, page: str) -> None:
-        """Game bands (those with a members cache): fresh discography (album clue), lineup, photo and logo."""
-        cached = read_cached(paths.MEMBERS_DIR, band_id)
-        if cached is None:
-            return
-        albums = ma.parse_discography(fetch(ma.discography_url(band_id)) or "")
-        if albums:
-            write_cached(paths.DISCO_DIR, band_id, albums)
-        write_cached(paths.MEMBERS_DIR, band_id, {**cached, **ma.parse_lineup(page)})  # keeps the review passage
+        """Game bands (those with a members cache): lineup, photo and logo, from the band page already downloaded
+        (their discography comes from `discographies.refresh`)."""
+        if read_cached(paths.MEMBERS_DIR, band_id) is not None:
+            write_cached(paths.MEMBERS_DIR, band_id, ma.parse_lineup(page))
 
     def records(self) -> list[dict]:
         return [{key: self.by_id[i].get(key) for key in FIELDS} for i in sorted(self.by_id)]
@@ -168,8 +164,9 @@ def save_reviews(found: NewReviews) -> None:
         entry[0] += 1
         entry[1] += review.rating
     write_json(paths.REVIEWS_BY_BAND, counts, ensure_ascii=True)
-    for name, page in found.pages.items():  # remember which reviews are counted now
-        write_json(paths.REVIEWS_NEW_DIR / name, page, ensure_ascii=True)
+    keys = read_json(paths.REVIEW_KEYS) or []  # remember which reviews are counted now
+    keys += [[*r.key, r.band_id, r.rating] for r in found.reviews]
+    write_json(paths.REVIEW_KEYS, keys, compact=True)
 
 
 def rebuild() -> None:
@@ -194,10 +191,12 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     now = dt.datetime.now()
-    since = start_date(read_json(paths.UPDATE_STATE), args.since)
+    state = read_json(paths.UPDATE_STATE)
+    since = start_date(state, args.since)
+    last = dt.datetime.fromisoformat(state["since"]) if state and not args.since else None
     print(f"changes since {since:%Y-%m-%d %H:%M} (Metal Archives time)", flush=True)
     new, modified = read_changes("created", since, now), read_changes("modified", since, now)
-    todo = sorted(set(new) | set(modified))
+    todo = sorted(changed_after(new, last) | changed_after(modified, last))
     print(f"{len(new)} new, {len(modified)} updated -> {len(todo)} bands to download", flush=True)
     found = read_new_reviews(since, now, known_review_keys())
     print(f"{len(found.reviews)} new reviews", flush=True)
@@ -225,6 +224,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     print("-> discographies", flush=True)
     done = discographies.refresh(todo, set(updater.by_id))
+    discographies.copy_to_game_cache(todo)
     print(f"discographies: {done} downloaded", flush=True)
 
     rebuild()

@@ -35,8 +35,7 @@ DATASET_NAME = "metal_archives_bands.json"  # inside state.tar.gz; unpacked to p
 # relative to the repository root
 STATE_FILES = [
     paths.REVIEWS_BY_BAND,
-    paths.REVIEWS_PAGES_DIR,
-    paths.REVIEWS_NEW_DIR,
+    paths.REVIEW_KEYS,
     paths.GEO_DIR / "admin1.geojson",
     paths.GEO_DIR / "cities1000.txt",
     paths.GEO_DIR / "admin1Codes.txt",

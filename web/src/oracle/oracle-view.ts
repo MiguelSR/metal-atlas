@@ -1,7 +1,6 @@
 /**
- * The Oracle (desktop only): questions in plain words, answered from the band data.
- * A language model in the browser (models.ts) reads the question, `refine` checks it against the question's own
- * words, and the engine answers. Without a model (not loaded yet, or none available) the rules alone read it.
+ * The Oracle: questions in plain words, answered from the band data. Rules (`refine`) read the question into a
+ * query and the engine answers it. No language model (see refine.ts).
  */
 
 import { getJson, lazy } from "../data";
@@ -14,18 +13,11 @@ import { describeQuery } from "./describe";
 import { EXAMPLES } from "./examples";
 import { eyeSvg } from "./eye";
 import { type Answer, OracleEngine, type Result, needsAlbums } from "./engine";
-import { type Availability, type Translator, availability, chromeTranslator, webLlmTranslator } from "./models";
-import { type Query, STATUSES, parseQuery } from "./query";
+import { type Query, STATUSES } from "./query";
 import { refine } from "./refine";
 
 const INTRO_KEY = "ma-oracle-intro";
 const EXAMPLE_COUNT = 8;
-
-/**
- * Phones and tablets get no model: Gemini Nano is desktop-only, WebLLM's 1.3 GB is too much for them, and the rules
- * alone score the same (see CLAUDE.md).
- */
-const isMobile = (): boolean => matchMedia("(max-width: 899px), (pointer: coarse)").matches;
 
 /** `n` different items, at random. */
 export function pickRandom<T>(items: readonly T[], n: number, random: () => number = Math.random): T[] {
@@ -34,24 +26,12 @@ export function pickRandom<T>(items: readonly T[], n: number, random: () => numb
   while (picked.length < n && pool.length) picked.push(pool.splice(Math.floor(random() * pool.length), 1)[0]!);
   return picked;
 }
-const WEBLLM_KEY = "ma-oracle-webllm";
-
-type ModelState =
-  | { kind: "checking" }
-  | { kind: "offer"; availability: Availability } // a button to download or load a model
-  | { kind: "none" }
-  | { kind: "mobile" } // phones and tablets: no model, the rules alone
-  | { kind: "loading"; progress: number }
-  | { kind: "ready" }
-  | { kind: "error"; message: string };
 
 interface Asked {
   question: string;
   result?: Result;
   query?: Query;
   seconds?: number;
-  by?: "chrome" | "webllm" | "rules";
-  badModelAnswer?: boolean;
   /** waiting for the blocks of discographies (albums/<k>.json) the question needs */
   loadingAlbums?: boolean;
   error?: string;
@@ -73,9 +53,6 @@ const store = (key: string): void => {
 };
 
 export class OracleView {
-  private model: ModelState = { kind: "checking" };
-  private translator: Translator | null = null;
-  private available: Availability | null = null;
   private showIntro = !stored(INTRO_KEY);
   private dataState: "loading" | "ready" | "error" = "loading";
   private busy = false;
@@ -119,7 +96,6 @@ export class OracleView {
         () => this.setData("error"),
       );
     }
-    if (this.model.kind === "checking") void this.checkModel();
     this.element.querySelector<HTMLInputElement>("#oq")?.focus();
   }
 
@@ -133,42 +109,6 @@ export class OracleView {
     this.examples = pickRandom(EXAMPLES[this.lang], EXAMPLE_COUNT);
   }
 
-  // ---------- model ----------
-
-  private async checkModel(): Promise<void> {
-    if (isMobile()) {
-      this.model = { kind: "mobile" };
-      this.render();
-      return;
-    }
-    this.available = await availability();
-    if (this.available.kind === "none") this.model = { kind: "none" };
-    else if (this.available.kind === "chrome" && this.available.ready) {
-      void this.loadModel(); // already on the computer: no download, no click needed
-      return;
-    } else this.model = { kind: "offer", availability: this.available };
-    this.render();
-  }
-
-  private async loadModel(): Promise<void> {
-    if (!this.available || this.available.kind === "none") return;
-    this.model = { kind: "loading", progress: 0 };
-    this.render();
-    const progress = (fraction: number): void => {
-      this.model = { kind: "loading", progress: fraction };
-      this.renderStatus();
-    };
-    try {
-      this.translator =
-        this.available.kind === "chrome" ? await chromeTranslator(progress) : await webLlmTranslator(progress);
-      if (this.available.kind === "webllm") store(WEBLLM_KEY);
-      this.model = { kind: "ready" };
-    } catch (error) {
-      this.model = { kind: "error", message: error instanceof Error ? error.message : String(error) };
-    }
-    this.render();
-  }
-
   // ---------- questions ----------
 
   private async ask(question: string): Promise<void> {
@@ -180,17 +120,7 @@ export class OracleView {
     try {
       const { index, engine } = await this.load();
       const started = performance.now();
-      let modelQuery: Query = { intent: "bands" };
-      entry.by = "rules";
-      if (this.translator) {
-        try {
-          modelQuery = parseQuery(await this.translator.translate(question));
-          entry.by = this.translator.backend;
-        } catch {
-          entry.badModelAnswer = true;
-        }
-      }
-      entry.query = refine(question, modelQuery, index);
+      entry.query = refine(question, index);
       if (needsAlbums(entry.query)) {
         const blocks = index.missingAlbumBlocks(engine.albumCandidates(entry.query));
         if (blocks.length) {
@@ -241,9 +171,6 @@ export class OracleView {
         this.shuffleExamples();
         this.render();
         break;
-      case "load":
-        void this.loadModel();
-        break;
     }
   }
 
@@ -253,7 +180,7 @@ export class OracleView {
     const t = this.t;
     const typed = this.element.querySelector<HTMLInputElement>("#oq")?.value ?? "";
     const intro = this.showIntro
-      ? `<section class="ointro"><h3>${t("oIntroTitle")}</h3><ul>${t(isMobile() ? "oIntroMobile" : "oIntro")
+      ? `<section class="ointro"><h3>${t("oIntroTitle")}</h3><ul>${t("oIntro")
           .map((line) => `<li>${line}</li>`)
           .join("")}</ul><button class="gbtn primary" data-o="intro">${t("oGotIt")}</button></section>`
       : "";
@@ -284,38 +211,6 @@ export class OracleView {
     const lines: string[] = [];
     if (this.dataState === "loading") lines.push(`<span class="ospin"></span>${t("oDataLoading")}`);
     if (this.dataState === "error") lines.push(`<span class="oerr">${t("oDataError")}</span>`);
-    const m = this.model;
-    switch (m.kind) {
-      case "checking":
-        lines.push(`<span class="ospin"></span>${t("oChecking")}`);
-        break;
-      case "offer": {
-        const webllm = m.availability.kind === "webllm";
-        const cached = webllm && stored(WEBLLM_KEY);
-        const text = webllm ? (cached ? t("oWebllmCached") : t("oWebllm")) : t("oChromeDownload");
-        const button = webllm ? (cached ? t("oWebllmLoad") : t("oWebllmBtn")) : t("oChromeBtn");
-        lines.push(`${text} <button class="gbtn" data-o="load">${button}</button>`, t("oNoModelYet"));
-        break;
-      }
-      case "none":
-        lines.push(t("oNoModel"));
-        break;
-      case "mobile":
-        lines.push(t("oMobile"));
-        break;
-      case "loading":
-        lines.push(
-          `<span class="ospin"></span>${t("oLoadingModel", Math.round(m.progress * 100))}<span class="obar"><i style="width:${m.progress * 100}%"></i></span>`,
-          t("oNoModelYet"),
-        );
-        break;
-      case "ready":
-        lines.push(this.translator?.backend === "webllm" ? t("oWebllmReady") : t("oChromeReady"));
-        break;
-      case "error":
-        lines.push(`<span class="oerr">${t("oModelError", esc(m.message))}</span>`);
-        break;
-    }
     box.innerHTML = lines.map((line) => `<div>${line}</div>`).join("");
   }
 
@@ -328,13 +223,11 @@ export class OracleView {
     const chips = describeQuery(a.query, t, this.state.countryName)
       .map((c) => `<span class="chip">${esc(c)}</span>`)
       .join("");
-    const notes = [
-      ...(a.badModelAnswer ? [t("oBadAnswer")] : []),
-      ...a.result.notes.map((n) => t(n.kind === "unknownBand" ? "oUnknownBand" : "oCountryAsLocation", n.value)),
-    ]
+    const notes = a.result.notes
+      .map((n) => t(n.kind === "unknownBand" ? "oUnknownBand" : "oCountryAsLocation", n.value))
       .map((n) => `<div class="onote">${esc(n)}</div>`)
       .join("");
-    const took = t("oTook", (a.seconds ?? 0).toFixed(1), t("oBy")[a.by ?? "rules"]);
+    const took = t("oTook", (a.seconds ?? 0).toFixed(1));
     return `<li class="oa">${head}<div class="ometa"><span class="olab">${t("oUnderstood")}</span>${chips}<span class="otook">${took}</span></div>
       ${notes}<div class="obody">${this.bodyHtml(a.result.answer, a.query)}</div></li>`;
   }

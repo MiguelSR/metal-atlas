@@ -6,7 +6,8 @@ An append-only file survives interruptions: a long download can stop and resume 
 
   backfill   download the bands that have none yet, most relevant first (~200,000 at the polite pace: ~3 days);
              resumable, so it can be stopped (Ctrl+C) and restarted at will
-  refresh    used by `update`: the bands that changed, those with upcoming releases, and the least recently checked
+  refresh    used by `update`: the bands that changed or were never downloaded, and those with upcoming releases
+             not checked for 30 days (no rotation over every band: Metal Archives asked for fewer requests)
 
 Usage: python3 -m metal_atlas discographies backfill [--hours H] [--limit N]
 """
@@ -18,11 +19,11 @@ from collections.abc import Iterable
 
 from . import metal_archives as ma
 from . import paths
-from .jsonio import read_cached, read_json
+from .jsonio import read_cached, read_json, write_cached
 from .net import FetchError, fetch, fetch_json
 
-ROTATION = 1000  # bands re-checked per daily update, least recently checked first (the whole set every ~200 days)
 REFRESH_HOURS = 2.0  # time limit of the daily refresh (~2 s per band): the job has 5 hours in all
+UPCOMING_RECHECK_DAYS = 30  # a band with an upcoming release is re-checked at most this often
 
 
 def load() -> dict[int, tuple[float, list]]:
@@ -96,22 +97,28 @@ def upcoming_band_ids() -> set[int]:
             return ids
 
 
-def refresh(changed: Iterable[int], known: set[int], rotation: int = ROTATION, hours: float = REFRESH_HOURS) -> int:
-    """`update`'s step: changed bands, bands with upcoming releases, then the least recently checked ones (never
-    downloaded first), within ``hours``; whatever is cut comes first next time, as the least recently checked."""
+def refresh(changed: Iterable[int], known: set[int], hours: float = REFRESH_HOURS) -> int:
+    """`update`'s step: the changed bands and those never downloaded, then the bands with upcoming releases not
+    checked for UPCOMING_RECHECK_DAYS, within ``hours`` (what is cut waits for the next run)."""
     deadline = time.time() + hours * 3600
     store = load()
-    todo = [b for b in changed if b in known]
+    todo = [b for b in changed if b in known] + sorted(known - set(store))
     try:
-        todo += sorted(upcoming_band_ids() & known)
+        stale = time.time() - UPCOMING_RECHECK_DAYS * 86400
+        todo += sorted(b for b in upcoming_band_ids() & known if store.get(b, (0, None))[0] < stale)
     except FetchError as error:
         print(f"  upcoming releases unavailable: {error}", flush=True)
-    queued = set(todo)
-    oldest = sorted((t for t in ((store.get(b, (0, None))[0], b) for b in known if b not in queued)))
-    todo += [b for _, b in oldest[:rotation]]
     done = download(dict.fromkeys(todo), deadline=deadline)
     compact(load(), known)
     return done
+
+
+def copy_to_game_cache(band_ids: Iterable[int]) -> None:
+    """The game bands' album clue (scraper/disco/) from the store, so `update` downloads each discography once."""
+    store = load()
+    for band_id in band_ids:
+        if band_id in store and store[band_id][1] and read_cached(paths.MEMBERS_DIR, band_id) is not None:
+            write_cached(paths.DISCO_DIR, band_id, store[band_id][1])
 
 
 def ranked_band_ids() -> list[int]:

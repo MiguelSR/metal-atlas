@@ -1,15 +1,14 @@
 /**
- * Corrects the model's query with what the question itself says.
+ * Reads a question into a query with rules: explicit cues (years, status, sort, counts, rankings, lineups, albums,
+ * what the data can't answer) and names the data knows (bands, labels, places, genres, theme concepts).
  *
- * The in-browser models are small: they translate names and paraphrases well but invent filters nobody asked for
- * (a country, a genre, a sort) and miss plain cues ("in the 80s", "how many", "the oldest"). So the question has the
- * last word: explicit cues (years, status, sort, counts, rankings, lineups, albums, what the data can't answer) are
- * read with rules, and what the model adds is kept only if the question backs it.
+ * No language model: Metal Archives doesn't allow its data to be used with AI (its webmaster, 2026-11-28), and the
+ * in-browser models added nothing measurable over these rules anyway.
  */
 
 import { fold } from "../format";
 import type { AlbumType, Group, Missing, NameMatch, Query, Sort, Status } from "./query";
-import { conceptsIn, isConcept, themeOf } from "./themes";
+import { conceptsIn, themeOf } from "./themes";
 import { PLACE_NAMES } from "./vocab";
 
 const PLACES: Record<string, string> = { ...PLACE_NAMES, "bay area": "Bay Area" };
@@ -419,14 +418,6 @@ function albumOrdinal(q: string): number {
   return 0;
 }
 
-/** Text the question backs: it contains the value, or a word sharing its first `prefix` letters. */
-function backed(q: string, value: string, prefix = 4): boolean {
-  const v = fold(value);
-  if (q.includes(v)) return true;
-  const stem = v.slice(0, prefix);
-  return stem.length === prefix && words(q).some((w) => w.startsWith(stem));
-}
-
 const UNSIGNED =
   /\bsin (?:sello|discografica)|\bno tengan? (?:sello|discografica)|\bunsigned\b|\bindependientes?\b|\bwithout (?:a )?(?:record )?label|\bno (?:record )?label|self-released|autoeditad/;
 
@@ -486,7 +477,7 @@ export function nameIn(question: string): { name: string; match: NameMatch } | n
   return null;
 }
 
-export function refine(question: string, model: Query, vocab: Vocabulary): Query {
+export function refine(question: string, vocab: Vocabulary): Query {
   const q = fold(question).replace(/[¿?¡!]/g, " ");
   const tokens = words(q);
 
@@ -500,8 +491,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   }
   for (const [pattern, missing] of UNSUPPORTED) if (pattern.test(q)) return { intent: "unsupported", missing };
 
-  // a ranking needs a grouping the question names ("which country…"); otherwise it is a list
-  const query: Query = { intent: model.intent === "top" ? "bands" : model.intent };
+  const query: Query = { intent: "bands" };
   // ---------- intent ----------
   const memberBands =
     /en (que|cuales) (bandas|grupos)|(which|what) bands|bandas (de|en) las que|ha tocado|has played/.test(q);
@@ -541,11 +531,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   else if (albums) query.intent = "albums";
   else if (group) query.intent = "top";
   else if (count) query.intent = "count";
-  // a count only when the question asks for one ("how many"); the model sometimes counts a plain list
-  if (query.intent === "count" && !count) query.intent = "bands";
-  // the model gave up but no cue says the data can't answer: try as a band search (undone at the end if no filter)
-  if (query.intent === "unsupported") query.intent = "bands";
-  if (query.intent === "top") query.groupBy = group ?? model.groupBy ?? "country";
+  if (query.intent === "top") query.groupBy = group ?? "country";
 
   // ---------- band names: "que se llame Slayer", "cuyo nombre empiece por Killer" ----------
   const byName = query.intent === "albums" || query.intent === "lineup" ? null : nameIn(question);
@@ -571,29 +557,24 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   // "discos de bandas de Motril": what follows "bandas de" is a place (or a genre), never the band asked about
   const bandText = question.replace(OF_BANDS, " ");
   if (bandIsAsked && !query.album) {
-    const band = model.band && vocab.isBand(fold(model.band)) && backed(q, model.band, 99) ? model.band : null;
     const exact =
       namedIn(bandText, (name) => vocab.isBand(name) && !YEAR.test(name)) ??
       bandAfterPreposition(fold(bandText), vocab);
     const misspelt = misspeltBand(bandText, vocab);
     // "Black Sabath": the misspelt full name beats "Black", the band found inside it
-    if (band) query.band = band;
-    else if (exact && !(misspelt && misspelt.written.length > exact.length && vocab.isBand(fold(misspelt.band)))) {
+    if (exact && !(misspelt && misspelt.written.length > exact.length && vocab.isBand(fold(misspelt.band)))) {
       query.band = exact;
     } else if (misspelt) {
       query.band = misspelt.band;
       written = misspelt.written;
     }
   }
-  if (model.album && !query.album && query.intent === "albums" && backed(q, model.album, 99)) query.album = model.album;
-  if (memberBands || model.member) {
-    const member = model.member && backed(q, model.member, 99) ? model.member : null;
+  if (memberBands) {
     const named =
       /(?:est[aá]n?|toca|tocan|tocado|plays?|played|member of|miembro de)\s+([\p{Lu}][\p{L}'.-]+(?:\s+[\p{Lu}][\p{L}'.-]+)+)/u.exec(
         question,
       );
-    const value = member ?? named?.[1];
-    if (value) query.member = value;
+    if (named) query.member = named[1]!;
   }
   if (!bandIsAsked && !query.member && !unsigned) {
     const labelAsked = /\bsellos?\b|\blabels?\b|discografica|\brecords\b/.test(q);
@@ -609,8 +590,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
         !words(n).every((w) => GENRE_WORDS.has(w) || w === "metal" || w === "rock") &&
         !(query.name && fold(query.name).includes(n)),
     );
-    const label = model.label && backed(q, model.label, 99) ? model.label : named;
-    if (label) query.label = label;
+    if (named) query.label = named;
   }
 
   // ---------- role ----------
@@ -620,7 +600,7 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   }
 
   // ---------- themes ----------
-  // the themes are the concepts (vocab.ts) named after a cue ("que hablen de…", "about…"); the model's only if none
+  // the themes are the concepts (vocab.ts) named after a cue ("que hablen de…", "about…")
   const cue =
     /\b(?:tematicas?|temas?|letras|lyrics|themes?|about|sobre|acerca de|(?:habl|trat|cant)(?:a|an|en|e|o|ar|aron|aba|aban|ado|ando)|sings?|sang|writes?|wrote)\b/.exec(
       q,
@@ -632,11 +612,6 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
     if (name) themeText = themeText.replace(fold(name), " ");
   }
   let themes = conceptsIn(themeText);
-  if (!themes.length && themed && model.themes) {
-    const mapped = [...new Set(model.themes.map(themeOf))];
-    // the model lists synonyms: keep the ones the vocabulary knows when there are any
-    themes = mapped.some(isConcept) ? mapped.filter(isConcept) : mapped;
-  }
   if (!themes.length && themed) {
     const word = /^\S+\s+(?:(?:de|del|sobre|about|of)\s+)?(?:(?:la|el|los|las|the|a)\s+)?([\p{L}-]{3,})/u.exec(
       themeText,
@@ -656,14 +631,8 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
   for (const name of named) unnamed = unnamed.replace(name, " ");
   const countries = countriesIn(unnamed, vocab).filter(outside);
   if (countries.length) query.country = countries[0]!;
-  else if (model.country && !vocab.country(model.country) && backed(q, model.country, 3)) {
-    query.location = model.country; // a region named as a country ("Scotland")
-  }
   const place = Object.keys(PLACES).find((name) => new RegExp(`\\b${name}\\b`).test(q));
-  // the model's place only if the question names it (Gemini Nano once answered "bandas de motril" with Murcia)
-  if (model.location && outside(model.location) && !vocab.country(model.location) && backed(q, model.location)) {
-    query.location = PLACES[fold(model.location)] ?? model.location;
-  } else if (place && outside(place)) query.location = PLACES[place];
+  if (place && outside(place)) query.location = PLACES[place];
   // album and lineup questions about no band: "discos de bandas de Motril" (only places the data knows, so an unknown
   // band's name isn't read as one)
   const placeAsked = query.intent === "bands" || query.intent === "count" || query.intent === "top";
@@ -784,8 +753,8 @@ export function refine(question: string, model: Query, vocab: Vocabulary): Query
     const trailing = trailingBand(bandText, vocab);
     if (trailing) query.band = trailing.band;
   }
-  if (model.intent === "unsupported" && query.intent === "bands" && Object.keys(query).length === 1) {
-    return { intent: "unsupported", missing: model.missing ?? "other" };
-  }
+  // nothing read at all ("hola", "¿cuál es el sentido de la vida?"): not a question the data answers, rather than
+  // a list of every band
+  if (query.intent === "bands" && Object.keys(query).length === 1) return { intent: "unsupported", missing: "other" };
   return query;
 }

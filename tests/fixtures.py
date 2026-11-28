@@ -143,13 +143,3 @@ SEARCH_NAME_CELL = (
     '<a href="https://www.metal-archives.com/bands/Yngwie_Malmsteen/84">Yngwie Malmsteen</a> '
     "(<strong>a.k.a.</strong> Yngwie J. Malmsteen's Rising Force, Rising Force) <!-- 12.30497 -->"
 )
-
-REVIEW_PAGE = """
-<div class="reviewContent">Iron Maiden were already huge when this came out, and everybody knew it.<br />
-<br />
-The guitars gallop from the first second to the last, with harmonies stacked three deep and a rhythm section that never lets the songs settle. Every chorus is built to be shouted back by a stadium. The production is dry but powerful.<br />
-<br />
-Powerslave is the album where Iron Maiden perfected the formula that they would keep for decades afterwards.<br />
-<br />
-In the end, it is a classic of its era.</div>
-"""
